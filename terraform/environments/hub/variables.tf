@@ -1,8 +1,3 @@
-variable "modules_path" {
-  type        = string
-  description = "Path to Terraform modules directory"
-}
-
 variable "existing_resources" {
   type = object({
     resource_group_name    = string

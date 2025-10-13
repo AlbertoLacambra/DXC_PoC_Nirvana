@@ -41,7 +41,7 @@ resource "azurerm_resource_group" "hub" {
 # Container Registry (Shared)
 module "acr" {
   count  = var.create_acr ? 1 : 0
-  source = "${var.modules_path}/container-registry"
+  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/container-registry?ref=master"
 
   resource_group_name           = "cc-acr-rg"
   location                      = var.location
@@ -71,7 +71,7 @@ module "acr" {
 # Monitoring (Log Analytics + Application Insights)
 module "monitoring" {
   count  = var.create_monitoring ? 1 : 0
-  source = "${var.modules_path}/monitoring"
+  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/monitoring?ref=master"
 
   resource_group_name               = "cc-monitoring-rg"
   location                          = var.location
