@@ -41,7 +41,7 @@ resource "azurerm_resource_group" "hub" {
 # Container Registry (Shared)
 module "acr" {
   count  = var.create_acr ? 1 : 0
-  source = "./modules/container-registry"
+  source = "${var.modules_path}/container-registry"
 
   resource_group_name           = "cc-acr-rg"
   location                      = var.location
@@ -51,6 +51,9 @@ module "acr" {
   public_network_access_enabled = var.acr_config.public_network_access_enabled
   retention_policy_enabled      = var.acr_config.retention_policy_enabled
   retention_policy_days         = var.acr_config.retention_policy_days
+  
+  # Network rules (disabled for now, can be added later)
+  network_rule_set_enabled = false
 
   # Grant AKS Dify pull access
   aks_principal_ids = [
@@ -68,7 +71,7 @@ module "acr" {
 # Monitoring (Log Analytics + Application Insights)
 module "monitoring" {
   count  = var.create_monitoring ? 1 : 0
-  source = "./modules/monitoring"
+  source = "${var.modules_path}/monitoring"
 
   resource_group_name               = "cc-monitoring-rg"
   location                          = var.location

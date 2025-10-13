@@ -117,8 +117,9 @@ EOF
 }
 
 # Generate common variables for all environments
-generate "variables" {
-  path      = "variables.tf"
+# Note: Each environment can have additional variables in their own variables.tf
+generate "common_variables" {
+  path      = "common_variables.tf"
   if_exists = "overwrite"
   
   contents = <<EOF

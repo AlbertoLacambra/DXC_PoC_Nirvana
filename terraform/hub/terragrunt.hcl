@@ -26,6 +26,9 @@ inputs = {
   environment     = local.environment
   location        = "northeurope"
   
+  # Path to modules directory (for module sources)
+  modules_path = "${get_parent_terragrunt_dir()}/modules"
+  
   # Recursos existentes (para data sources)
   existing_resources = local.existing_resources
   
@@ -75,13 +78,8 @@ inputs = {
 }
 
 # Terraform source para Hub
+# Note: environments/hub contains a symlink to ../../modules
+# This allows Terragrunt to copy both the environment code and modules
 terraform {
   source = "${get_parent_terragrunt_dir()}/environments/hub"
-  
-  # Create symlink to modules directory before init
-  # This allows main.tf to use "./modules/..." paths
-  before_hook "link_modules" {
-    commands = ["init", "init-from-module"]
-    execute  = ["bash", "-c", "find ${get_terragrunt_dir()}/.terragrunt-cache -type d -maxdepth 2 -exec ln -sf ${get_parent_terragrunt_dir()}/modules {}/modules \\; 2>/dev/null || true"]
-  }
 }
