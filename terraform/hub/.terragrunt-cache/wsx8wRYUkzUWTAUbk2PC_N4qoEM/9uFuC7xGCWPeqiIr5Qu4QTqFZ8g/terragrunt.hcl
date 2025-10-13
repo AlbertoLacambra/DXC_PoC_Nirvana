@@ -26,9 +26,6 @@ inputs = {
   environment     = local.environment
   location        = "northeurope"
   
-  # Path to modules directory (for module sources)
-  modules_path = "${get_parent_terragrunt_dir()}/modules"
-  
   # Recursos existentes (para data sources)
   existing_resources = local.existing_resources
   
