@@ -14,10 +14,10 @@ locals {
   existing_resources = {
     resource_group_name    = "dify-rg"
     aks_cluster_name       = "dify-aks"
-    vnet_name              = "dify-vnet"
+    vnet_name              = "dify-private-vnet"
     postgresql_server_name = "dify-postgres-9107e36a"
     storage_account_name   = "difyprivatest9107e36a"
-    key_vault_name         = "dify-private-kv"
+    key_vault_name         = "dify-private-kv-9107e36a"
   }
 }
 
@@ -37,8 +37,8 @@ inputs = {
     sku                           = "Standard"
     admin_enabled                 = false
     public_network_access_enabled = true
-    retention_policy_enabled      = true
-    retention_policy_days         = 7
+    retention_policy_enabled      = false  # Only available with Premium SKU
+    retention_policy_days         = 7      # Ignored when retention_policy_enabled=false
   }
   
   # Monitoring

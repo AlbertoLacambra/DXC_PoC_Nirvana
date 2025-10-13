@@ -80,9 +80,8 @@ resource "azurerm_role_assignment" "acr_pull" {
 }
 
 # Diagnostic settings to Log Analytics
+# Note: No count here to avoid "Invalid count argument" error when workspace_id comes from another module
 resource "azurerm_monitor_diagnostic_setting" "acr" {
-  count = var.log_analytics_workspace_id != null ? 1 : 0
-
   name                       = "acr-diagnostics"
   target_resource_id         = azurerm_container_registry.this.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
