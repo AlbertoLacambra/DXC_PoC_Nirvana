@@ -15,9 +15,18 @@ DXC_PoC_Nirvana/
 │   ├── use-cases/                      📝 Pendiente (Phase 1)
 │   └── runbooks/                       📝 Pendiente (Phase 1)
 ├── terraform/
-│   ├── terragrunt.hcl                  📝 Pendiente
-│   ├── modules/                        📝 Pendiente (AKS, VNet, etc.)
-│   ├── hub/                            📝 Pendiente
+│   ├── terragrunt.hcl                  ✅ Configurado (multi-container strategy)
+│   ├── STATE_MANAGEMENT.md             ✅ Estrategia de state documentada
+│   ├── NEXT_STEPS.md                   ✅ Pasos siguientes documentados
+│   ├── README.md                       ✅ Guía de uso Terragrunt
+│   ├── modules/
+│   │   ├── container-registry/         ✅ Completado
+│   │   ├── monitoring/                 ✅ Completado
+│   │   ├── aks/                        📝 Pendiente
+│   │   └── vnet-peering/               📝 Pendiente
+│   ├── environments/
+│   │   └── hub/                        ✅ Main.tf, variables, outputs (paths a arreglar)
+│   ├── hub/                            ✅ Terragrunt config completado
 │   ├── spoke-prod/                     📝 Pendiente
 │   └── spoke-dev/                      📝 Pendiente
 ├── apps/
