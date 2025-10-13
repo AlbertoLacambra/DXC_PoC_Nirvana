@@ -31,7 +31,7 @@ resource "azurerm_container_registry" "this" {
       default_action = var.network_rule_default_action
 
       dynamic "ip_rule" {
-        for_each = var.allowed_ip_ranges
+        for_each = var.network_rule_set_enabled ? var.allowed_ip_ranges : []
         content {
           action   = "Allow"
           ip_range = ip_rule.value
@@ -39,7 +39,7 @@ resource "azurerm_container_registry" "this" {
       }
 
       dynamic "virtual_network" {
-        for_each = var.allowed_subnet_ids
+        for_each = var.network_rule_set_enabled ? var.allowed_subnet_ids : []
         content {
           action    = "Allow"
           subnet_id = virtual_network.value
