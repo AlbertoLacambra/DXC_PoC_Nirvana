@@ -41,7 +41,7 @@ resource "azurerm_resource_group" "hub" {
 # Container Registry (Shared)
 module "acr" {
   count  = var.create_acr ? 1 : 0
-  source = "../../modules/container-registry"
+  source = "./modules/container-registry"
 
   resource_group_name           = "cc-acr-rg"
   location                      = var.location
@@ -68,7 +68,7 @@ module "acr" {
 # Monitoring (Log Analytics + Application Insights)
 module "monitoring" {
   count  = var.create_monitoring ? 1 : 0
-  source = "../../modules/monitoring"
+  source = "./modules/monitoring"
 
   resource_group_name               = "cc-monitoring-rg"
   location                          = var.location
