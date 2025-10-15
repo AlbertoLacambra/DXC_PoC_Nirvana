@@ -1,0 +1,326 @@
+name: 🚀 Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/deploy.yml'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - hub
+        default: 'hub'
+      auto_approve:
+        description: 'Auto approve terraform apply'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  TERRAFORM_VERSION: '1.5.5'
+  TERRAGRUNT_VERSION: '0.55.0'
+  AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
+
+jobs:
+  # ========================================
+  # Job 1: Detect Changes
+  # ========================================
+  detect-changes:
+    name: 🔍 Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      hub_changed: ${{ steps.changes.outputs.hub }}
+      
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 🔍 Detect Changed Environments
+        id: changes
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -q "^terraform/hub/"; then
+            echo "hub=true" >> $GITHUB_OUTPUT
+          else
+            echo "hub=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ========================================
+  # Job 2: Deploy Hub Environment
+  # ========================================
+  deploy-hub:
+    name: 🏗️ Deploy Hub
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hub_changed == 'true' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: hub
+      url: https://portal.azure.com/#@/resource/subscriptions/739aaf91-5cb2-45a6-ab4f-abf883e9d3f7/resourceGroups/cloudmind-hub-rg
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: 🔧 Setup Terragrunt
+        run: |
+          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 🔍 Terraform Init
+        working-directory: terraform/hub
+        run: terragrunt init
+
+      - name: 📋 Terraform Plan
+        id: plan
+        working-directory: terraform/hub
+        run: |
+          terragrunt plan -out=tfplan -detailed-exitcode -no-color > plan_output.txt 2>&1 || EXIT_CODE=$?
+          cat plan_output.txt
+          
+          # detailed-exitcode returns:
+          # 0 - No changes
+          # 1 - Error
+          # 2 - Changes present
+          if [ "${EXIT_CODE:-0}" -eq 1 ]; then
+            echo "❌ Terraform plan failed"
+            exit 1
+          elif [ "${EXIT_CODE:-0}" -eq 2 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📊 Extract Plan Summary
+        id: summary
+        if: always()
+        working-directory: terraform/hub
+        run: |
+          if [ -f plan_output.txt ]; then
+            TO_ADD=$(grep -oP '\d+(?= to add)' plan_output.txt | head -1 || echo "0")
+            TO_CHANGE=$(grep -oP '\d+(?= to change)' plan_output.txt | head -1 || echo "0")
+            TO_DESTROY=$(grep -oP '\d+(?= to destroy)' plan_output.txt | head -1 || echo "0")
+            
+            echo "to_add=$TO_ADD" >> $GITHUB_OUTPUT
+            echo "to_change=$TO_CHANGE" >> $GITHUB_OUTPUT
+            echo "to_destroy=$TO_DESTROY" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ⏸️ Wait for Manual Approval
+        if: steps.plan.outputs.has_changes == 'true' && github.event.inputs.auto_approve != 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          approvers: AlbertoLacambra
+          minimum-approvals: 1
+          issue-title: "🚀 Aprobar Deployment de Hub"
+          issue-body: |
+            ## 🚀 Deployment de Infraestructura Hub
+            
+            Se requiere aprobación manual para aplicar los siguientes cambios:
+            
+            ### 📊 Resumen de Cambios
+            
+            | Acción | Cantidad |
+            |--------|----------|
+            | ➕ Recursos a crear | ${{ steps.summary.outputs.to_add }} |
+            | 🔄 Recursos a modificar | ${{ steps.summary.outputs.to_change }} |
+            | ❌ Recursos a destruir | ${{ steps.summary.outputs.to_destroy }} |
+            
+            ### 📋 Detalles del Plan
+            
+            Ver el [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) para más detalles.
+            
+            ---
+            
+            **⚠️ IMPORTANTE**: Revisa cuidadosamente el plan antes de aprobar.
+            
+            - ✅ **Aprobar**: Comenta `/approve` en este issue
+            - ❌ **Rechazar**: Comenta `/deny` en este issue
+            
+            **Commit**: ${{ github.sha }}  
+            **Actor**: @${{ github.actor }}  
+            **Entorno**: Hub
+
+      - name: 🚀 Terraform Apply
+        if: steps.plan.outputs.has_changes == 'true'
+        working-directory: terraform/hub
+        run: |
+          terragrunt apply tfplan
+
+      - name: ℹ️ No Changes
+        if: steps.plan.outputs.has_changes == 'false'
+        run: |
+          echo "✅ No hay cambios que aplicar en el entorno Hub"
+
+      - name: 📊 Get Terraform Outputs
+        if: steps.plan.outputs.has_changes == 'true'
+        id: outputs
+        working-directory: terraform/hub
+        run: |
+          terragrunt output -json > outputs.json
+          cat outputs.json
+
+      - name: 💾 Upload Terraform Outputs
+        if: steps.plan.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs-hub
+          path: terraform/hub/outputs.json
+          retention-days: 30
+
+  # ========================================
+  # Job 3: Update Documentation
+  # ========================================
+  update-docs:
+    name: 📚 Update Documentation
+    runs-on: ubuntu-latest
+    needs: deploy-hub
+    if: always() && needs.deploy-hub.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Generate Terraform Docs
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          working-dir: terraform/modules
+          output-file: README.md
+          output-method: inject
+          git-push: true
+          git-commit-message: "docs: Update terraform-docs [skip ci]"
+          recursive: true
+          recursive-path: .
+
+      - name: 📊 Update Infrastructure Diagram
+        run: |
+          # Aquí podrías generar un diagrama actualizado con terraform-visual o similar
+          echo "📊 Infrastructure diagram update would go here"
+
+  # ========================================
+  # Job 4: Notify Teams
+  # ========================================
+  notify-teams:
+    name: 📢 Notify Teams
+    runs-on: ubuntu-latest
+    needs: [deploy-hub, update-docs]
+    if: always()
+    
+    steps:
+      - name: 📱 Send Teams Notification
+        run: |
+          DEPLOY_STATUS="${{ needs.deploy-hub.result }}"
+          
+          if [ "$DEPLOY_STATUS" == "success" ]; then
+            COLOR="Good"
+            EMOJI="✅"
+            TITLE="Deployment Exitoso"
+          elif [ "$DEPLOY_STATUS" == "skipped" ]; then
+            COLOR="Accent"
+            EMOJI="ℹ️"
+            TITLE="Deployment Omitido (Sin Cambios)"
+          else
+            COLOR="Attention"
+            EMOJI="❌"
+            TITLE="Deployment Fallido"
+          fi
+          
+          curl -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "attachments": [{
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.4",
+                  "body": [
+                    {
+                      "type": "TextBlock",
+                      "text": "'"$EMOJI $TITLE"' - Hub",
+                      "weight": "Bolder",
+                      "size": "Large",
+                      "color": "'"$COLOR"'"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "Deployment de infraestructura completado",
+                      "wrap": true
+                    },
+                    {
+                      "type": "FactSet",
+                      "facts": [
+                        {
+                          "title": "🎯 Entorno:",
+                          "value": "Hub"
+                        },
+                        {
+                          "title": "👤 Actor:",
+                          "value": "${{ github.actor }}"
+                        },
+                        {
+                          "title": "🌿 Branch:",
+                          "value": "${{ github.ref_name }}"
+                        },
+                        {
+                          "title": "📊 Estado Deploy:",
+                          "value": "'"$DEPLOY_STATUS"'"
+                        },
+                        {
+                          "title": "📚 Docs:",
+                          "value": "${{ needs.update-docs.result }}"
+                        },
+                        {
+                          "title": "⏱️ Duración:",
+                          "value": "${{ github.run_number }}"
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver Workflow",
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    },
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver en Azure Portal",
+                      "url": "https://portal.azure.com/#@/resource/subscriptions/739aaf91-5cb2-45a6-ab4f-abf883e9d3f7/resourceGroups/cloudmind-hub-rg"
+                    }
+                  ]
+                }
+              }]
+            }' \
+            '${{ secrets.TEAMS_WEBHOOK_URL }}'

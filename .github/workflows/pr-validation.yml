@@ -1,0 +1,400 @@
+name: 🔍 PR Validation - Terraform
+
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/pr-validation.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  TERRAFORM_VERSION: '1.5.5'
+  TERRAGRUNT_VERSION: '0.55.0'
+  AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
+
+jobs:
+  # ========================================
+  # Job 1: Terraform Format Check
+  # ========================================
+  terraform-fmt:
+    name: 📝 Terraform Format
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: 🎨 Terraform Format Check
+        id: fmt
+        run: |
+          echo "::group::Checking Terraform formatting"
+          terraform fmt -check -recursive -diff terraform/
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: 💬 Comment Format Results
+        if: steps.fmt.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## ❌ Terraform Format Check Failed\n\n' +
+                    'Los archivos Terraform no están correctamente formateados.\n\n' +
+                    '**Solución**: Ejecuta `terraform fmt -recursive terraform/` localmente y commitea los cambios.\n\n' +
+                    '```bash\n' +
+                    'terraform fmt -recursive terraform/\n' +
+                    'git add .\n' +
+                    'git commit -m "style: Format Terraform files"\n' +
+                    'git push\n' +
+                    '```'
+            })
+
+      - name: ❌ Fail if format check failed
+        if: steps.fmt.outcome == 'failure'
+        run: exit 1
+
+  # ========================================
+  # Job 2: Terraform Validate
+  # ========================================
+  terraform-validate:
+    name: ✅ Terraform Validate
+    runs-on: ubuntu-latest
+    needs: terraform-fmt
+    
+    strategy:
+      matrix:
+        environment:
+          - hub
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: 🔧 Setup Terragrunt
+        run: |
+          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 🔍 Terraform Init
+        working-directory: terraform/${{ matrix.environment }}
+        run: terragrunt init -backend=false
+
+      - name: ✅ Terraform Validate
+        working-directory: terraform/${{ matrix.environment }}
+        run: terragrunt validate
+
+  # ========================================
+  # Job 3: Terraform Plan
+  # ========================================
+  terraform-plan:
+    name: 📋 Terraform Plan
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    
+    strategy:
+      matrix:
+        environment:
+          - hub
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: 🔧 Setup Terragrunt
+        run: |
+          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 🔍 Terraform Init
+        working-directory: terraform/${{ matrix.environment }}
+        run: terragrunt init
+
+      - name: 📋 Terraform Plan
+        id: plan
+        working-directory: terraform/${{ matrix.environment }}
+        run: |
+          terragrunt plan -out=tfplan -no-color > plan_output.txt 2>&1
+          cat plan_output.txt
+        continue-on-error: true
+
+      - name: 📊 Extract Plan Summary
+        id: summary
+        if: always()
+        working-directory: terraform/${{ matrix.environment }}
+        run: |
+          if [ -f plan_output.txt ]; then
+            # Extraer resumen del plan
+            SUMMARY=$(grep -E "Plan:|No changes" plan_output.txt | tail -1 || echo "Plan execution failed")
+            echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+            
+            # Detectar recursos a crear, modificar, destruir
+            TO_ADD=$(grep -oP '\d+(?= to add)' plan_output.txt | head -1 || echo "0")
+            TO_CHANGE=$(grep -oP '\d+(?= to change)' plan_output.txt | head -1 || echo "0")
+            TO_DESTROY=$(grep -oP '\d+(?= to destroy)' plan_output.txt | head -1 || echo "0")
+            
+            echo "to_add=$TO_ADD" >> $GITHUB_OUTPUT
+            echo "to_change=$TO_CHANGE" >> $GITHUB_OUTPUT
+            echo "to_destroy=$TO_DESTROY" >> $GITHUB_OUTPUT
+          else
+            echo "summary=Plan output file not found" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 💬 Comment Plan Results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.existsSync('terraform/${{ matrix.environment }}/plan_output.txt')
+              ? fs.readFileSync('terraform/${{ matrix.environment }}/plan_output.txt', 'utf8')
+              : 'Plan output not available';
+            
+            const summary = '${{ steps.summary.outputs.summary }}';
+            const toAdd = '${{ steps.summary.outputs.to_add }}';
+            const toChange = '${{ steps.summary.outputs.to_change }}';
+            const toDestroy = '${{ steps.summary.outputs.to_destroy }}';
+            
+            // Limitar output a 65000 caracteres (límite de GitHub)
+            const truncatedPlan = planOutput.length > 60000 
+              ? planOutput.substring(0, 60000) + '\n\n... (output truncated)'
+              : planOutput;
+            
+            const icon = '${{ steps.plan.outcome }}' === 'success' ? '✅' : '❌';
+            const status = '${{ steps.plan.outcome }}' === 'success' ? 'Exitoso' : 'Fallido';
+            
+            const body = `## ${icon} Terraform Plan - ${{ matrix.environment }}
+            
+            **Estado**: ${status}
+            
+            ### 📊 Resumen de Cambios
+            
+            | Acción | Cantidad |
+            |--------|----------|
+            | ➕ Recursos a crear | ${toAdd} |
+            | 🔄 Recursos a modificar | ${toChange} |
+            | ❌ Recursos a destruir | ${toDestroy} |
+            
+            <details>
+            <summary>📋 Ver Plan Completo</summary>
+            
+            \`\`\`terraform
+            ${truncatedPlan}
+            \`\`\`
+            
+            </details>
+            
+            ---
+            
+            **Entorno**: \`${{ matrix.environment }}\`  
+            **Commit**: ${context.sha.substring(0, 7)}  
+            **Actor**: @${context.actor}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: ❌ Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  # ========================================
+  # Job 4: Terraform Docs
+  # ========================================
+  terraform-docs:
+    name: 📚 Terraform Docs
+    runs-on: ubuntu-latest
+    needs: terraform-fmt
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: 📝 Generate Terraform Docs
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          working-dir: terraform/modules
+          output-file: README.md
+          output-method: inject
+          git-push: false
+          recursive: true
+          recursive-path: .
+
+      - name: 💬 Comment if docs need update
+        if: always()
+        run: |
+          if git diff --quiet; then
+            echo "✅ Terraform docs are up to date"
+          else
+            echo "⚠️ Terraform docs need to be updated"
+            echo "Changed files:"
+            git diff --name-only
+          fi
+
+  # ========================================
+  # Job 5: Security Scan (Checkov)
+  # ========================================
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: terraform-fmt
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔒 Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+
+      - name: 📊 Upload SARIF results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+
+  # ========================================
+  # Job 6: Notify Teams
+  # ========================================
+  notify-teams:
+    name: 📢 Notify Teams
+    runs-on: ubuntu-latest
+    needs: [terraform-plan, terraform-docs, security-scan]
+    if: always()
+    
+    steps:
+      - name: 📱 Send Teams Notification
+        run: |
+          STATUS="${{ needs.terraform-plan.result }}"
+          
+          if [ "$STATUS" == "success" ]; then
+            COLOR="Good"
+            EMOJI="✅"
+            TITLE="PR Validation Exitosa"
+          else
+            COLOR="Attention"
+            EMOJI="❌"
+            TITLE="PR Validation Fallida"
+          fi
+          
+          curl -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "attachments": [{
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.4",
+                  "body": [
+                    {
+                      "type": "TextBlock",
+                      "text": "'"$EMOJI $TITLE"'",
+                      "weight": "Bolder",
+                      "size": "Large",
+                      "color": "'"$COLOR"'"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}",
+                      "wrap": true
+                    },
+                    {
+                      "type": "FactSet",
+                      "facts": [
+                        {
+                          "title": "👤 Autor:",
+                          "value": "${{ github.event.pull_request.user.login }}"
+                        },
+                        {
+                          "title": "🌿 Branch:",
+                          "value": "${{ github.event.pull_request.head.ref }}"
+                        },
+                        {
+                          "title": "📊 Estado:",
+                          "value": "'"$STATUS"'"
+                        },
+                        {
+                          "title": "🔍 Plan:",
+                          "value": "${{ needs.terraform-plan.result }}"
+                        },
+                        {
+                          "title": "📚 Docs:",
+                          "value": "${{ needs.terraform-docs.result }}"
+                        },
+                        {
+                          "title": "🔒 Security:",
+                          "value": "${{ needs.security-scan.result }}"
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver PR",
+                      "url": "${{ github.event.pull_request.html_url }}"
+                    },
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver Workflow",
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              }]
+            }' \
+            '${{ secrets.TEAMS_WEBHOOK_URL }}'

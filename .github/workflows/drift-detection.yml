@@ -1,0 +1,341 @@
+name: 🔍 Drift Detection
+
+on:
+  schedule:
+    # Ejecutar diariamente a las 2:00 AM UTC (3:00 AM CET)
+    - cron: '0 2 * * *'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: true
+        type: choice
+        options:
+          - hub
+          - all
+        default: 'all'
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+env:
+  TERRAFORM_VERSION: '1.5.5'
+  TERRAGRUNT_VERSION: '0.55.0'
+  AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
+
+jobs:
+  # ========================================
+  # Job 1: Check Drift - Hub
+  # ========================================
+  drift-check-hub:
+    name: 🔍 Drift Check - Hub
+    runs-on: ubuntu-latest
+    outputs:
+      has_drift: ${{ steps.drift.outputs.has_drift }}
+      drift_summary: ${{ steps.drift.outputs.summary }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: 🔧 Setup Terragrunt
+        run: |
+          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 🔍 Terraform Init
+        working-directory: terraform/hub
+        run: terragrunt init
+
+      - name: 🔎 Terraform Plan (Drift Detection)
+        id: drift
+        working-directory: terraform/hub
+        run: |
+          set +e
+          terragrunt plan -detailed-exitcode -no-color > drift_output.txt 2>&1
+          EXIT_CODE=$?
+          set -e
+          
+          cat drift_output.txt
+          
+          # detailed-exitcode returns:
+          # 0 - No changes (no drift)
+          # 1 - Error
+          # 2 - Changes present (drift detected)
+          
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo "✅ No drift detected"
+            echo "has_drift=false" >> $GITHUB_OUTPUT
+            echo "summary=No drift detected" >> $GITHUB_OUTPUT
+            exit 0
+          elif [ "$EXIT_CODE" -eq 2 ]; then
+            echo "⚠️ Drift detected!"
+            echo "has_drift=true" >> $GITHUB_OUTPUT
+            
+            # Extraer cambios
+            TO_ADD=$(grep -oP '\d+(?= to add)' drift_output.txt | head -1 || echo "0")
+            TO_CHANGE=$(grep -oP '\d+(?= to change)' drift_output.txt | head -1 || echo "0")
+            TO_DESTROY=$(grep -oP '\d+(?= to destroy)' drift_output.txt | head -1 || echo "0")
+            
+            SUMMARY="Drift: +$TO_ADD ~$TO_CHANGE -$TO_DESTROY"
+            echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+            echo "to_add=$TO_ADD" >> $GITHUB_OUTPUT
+            echo "to_change=$TO_CHANGE" >> $GITHUB_OUTPUT
+            echo "to_destroy=$TO_DESTROY" >> $GITHUB_OUTPUT
+            
+            exit 0
+          else
+            echo "❌ Error checking drift"
+            echo "has_drift=error" >> $GITHUB_OUTPUT
+            echo "summary=Error checking drift" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 💾 Upload Drift Report
+        if: steps.drift.outputs.has_drift == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report-hub-${{ github.run_number }}
+          path: terraform/hub/drift_output.txt
+          retention-days: 90
+
+      - name: 📊 Parse Drift Details
+        if: steps.drift.outputs.has_drift == 'true'
+        id: details
+        working-directory: terraform/hub
+        run: |
+          # Extraer recursos con drift
+          echo "## Recursos con Drift Detectado" > drift_summary.md
+          echo "" >> drift_summary.md
+          
+          grep -E "(will be created|will be updated|will be destroyed|must be replaced)" drift_output.txt | head -20 >> drift_summary.md || true
+          
+          cat drift_summary.md
+
+      - name: 💾 Upload Drift Summary
+        if: steps.drift.outputs.has_drift == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-summary-hub-${{ github.run_number }}
+          path: terraform/hub/drift_summary.md
+          retention-days: 90
+
+  # ========================================
+  # Job 2: Create Drift Issue
+  # ========================================
+  create-drift-issue:
+    name: 📝 Create Drift Issue
+    runs-on: ubuntu-latest
+    needs: drift-check-hub
+    if: needs.drift-check-hub.outputs.has_drift == 'true'
+    
+    steps:
+      - name: 📥 Download Drift Report
+        uses: actions/download-artifact@v4
+        with:
+          name: drift-report-hub-${{ github.run_number }}
+
+      - name: 📥 Download Drift Summary
+        uses: actions/download-artifact@v4
+        with:
+          name: drift-summary-hub-${{ github.run_number }}
+
+      - name: 🐛 Create GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            const driftOutput = fs.readFileSync('drift_output.txt', 'utf8');
+            const driftSummary = fs.readFileSync('drift_summary.md', 'utf8');
+            
+            const truncatedOutput = driftOutput.length > 50000 
+              ? driftOutput.substring(0, 50000) + '\n\n... (output truncated)'
+              : driftOutput;
+            
+            const issueBody = `## ⚠️ Infrastructure Drift Detected
+            
+            **Entorno**: Hub  
+            **Fecha detección**: ${new Date().toISOString()}  
+            **Workflow Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ### 📊 Resumen
+            
+            ${driftSummary}
+            
+            ### 📋 Cambios Detectados
+            
+            | Acción | Cantidad |
+            |--------|----------|
+            | ➕ Recursos a crear | ${{ needs.drift-check-hub.outputs.to_add || '0' }} |
+            | 🔄 Recursos a modificar | ${{ needs.drift-check-hub.outputs.to_change || '0' }} |
+            | ❌ Recursos a destruir | ${{ needs.drift-check-hub.outputs.to_destroy || '0' }} |
+            
+            <details>
+            <summary>📋 Ver Reporte Completo de Drift</summary>
+            
+            \`\`\`terraform
+            ${truncatedOutput}
+            \`\`\`
+            
+            </details>
+            
+            ---
+            
+            ### ⚡ Acciones Requeridas
+            
+            1. **Revisar cambios**: Analiza los cambios detectados
+            2. **Determinar causa**: ¿Cambios manuales? ¿Actualizaciones de Azure?
+            3. **Decidir acción**:
+               - Si son cambios esperados: Actualizar Terraform para reflejar el estado actual
+               - Si son cambios no deseados: Revertir cambios manuales y re-aplicar Terraform
+            
+            ### 🔗 Enlaces Útiles
+            
+            - [Azure Portal - Hub Resource Group](https://portal.azure.com/#@/resource/subscriptions/739aaf91-5cb2-45a6-ab4f-abf883e9d3f7/resourceGroups/cloudmind-hub-rg)
+            - [Drift Detection Workbook](https://portal.azure.com/#view/Microsoft_Azure_Monitoring/WorkbookViewerBlade)
+            - [Terraform State](https://portal.azure.com/#view/Microsoft_Azure_Storage/ContainerMenuBlade/~/overview/storageAccountId/%2Fsubscriptions%2F739aaf91-5cb2-45a6-ab4f-abf883e9d3f7%2FresourceGroups%2Ftfstate-rg%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Ftfstate9a448729/path/cc-hub)
+            
+            `;
+            
+            // Buscar si ya existe un issue abierto de drift
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['drift-detection', 'infrastructure']
+            });
+            
+            if (existingIssues.data.length > 0) {
+              // Actualizar issue existente
+              const issue = existingIssues.data[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `## 🔄 Drift Actualizado\n\n${issueBody}`
+              });
+              
+              console.log(`Updated existing drift issue #${issue.number}`);
+            } else {
+              // Crear nuevo issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '⚠️ Infrastructure Drift Detected - Hub',
+                body: issueBody,
+                labels: ['drift-detection', 'infrastructure', 'hub', 'needs-review']
+              });
+              
+              console.log(`Created new drift issue #${issue.data.number}`);
+            }
+
+  # ========================================
+  # Job 3: Notify Teams
+  # ========================================
+  notify-teams:
+    name: 📢 Notify Teams
+    runs-on: ubuntu-latest
+    needs: drift-check-hub
+    if: always()
+    
+    steps:
+      - name: 📱 Send Teams Notification
+        run: |
+          HAS_DRIFT="${{ needs.drift-check-hub.outputs.has_drift }}"
+          
+          if [ "$HAS_DRIFT" == "true" ]; then
+            COLOR="Warning"
+            EMOJI="⚠️"
+            TITLE="Drift Detectado en Infraestructura"
+            MESSAGE="Se han detectado cambios no autorizados en la infraestructura Hub"
+          elif [ "$HAS_DRIFT" == "false" ]; then
+            COLOR="Good"
+            EMOJI="✅"
+            TITLE="Sin Drift Detectado"
+            MESSAGE="La infraestructura Hub está sincronizada con Terraform"
+          else
+            COLOR="Attention"
+            EMOJI="❌"
+            TITLE="Error en Drift Detection"
+            MESSAGE="Hubo un error al verificar drift en la infraestructura"
+          fi
+          
+          curl -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "attachments": [{
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.4",
+                  "body": [
+                    {
+                      "type": "TextBlock",
+                      "text": "'"$EMOJI $TITLE"'",
+                      "weight": "Bolder",
+                      "size": "Large",
+                      "color": "'"$COLOR"'"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": "'"$MESSAGE"'",
+                      "wrap": true
+                    },
+                    {
+                      "type": "FactSet",
+                      "facts": [
+                        {
+                          "title": "🎯 Entorno:",
+                          "value": "Hub"
+                        },
+                        {
+                          "title": "📅 Fecha:",
+                          "value": "'"$(date -u +"%Y-%m-%d %H:%M UTC")"'"
+                        },
+                        {
+                          "title": "📊 Estado:",
+                          "value": "'"$HAS_DRIFT"'"
+                        },
+                        {
+                          "title": "📋 Resumen:",
+                          "value": "${{ needs.drift-check-hub.outputs.drift_summary }}"
+                        }
+                      ]
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver Workflow",
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    },
+                    {
+                      "type": "Action.OpenUrl",
+                      "title": "Ver Dashboard",
+                      "url": "https://portal.azure.com/#view/Microsoft_Azure_Monitoring/WorkbookViewerBlade"
+                    }
+                  ]
+                }
+              }]
+            }' \
+            '${{ secrets.TEAMS_WEBHOOK_URL }}'
