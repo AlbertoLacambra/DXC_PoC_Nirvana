@@ -77,34 +77,19 @@ output "acr_login_server" {
   description = "ACR login server"
 }
 
-output "log_analytics_workspace_id" {
-  value       = var.create_monitoring ? module.monitoring[0].log_analytics_workspace_id : null
-  description = "Log Analytics Workspace ID"
+
+# AKS Namespaces
+output "dify_namespace" {
+  value       = module.aks_namespaces.dify_namespace_name
+  description = "Dify namespace name"
 }
 
-output "log_analytics_workspace_name" {
-  value       = var.create_monitoring ? module.monitoring[0].log_analytics_workspace_name : null
-  description = "Log Analytics Workspace name"
+output "cloudmind_namespace" {
+  value       = module.aks_namespaces.cloudmind_namespace_name
+  description = "Cloud Mind namespace name"
 }
 
-output "application_insights_id" {
-  value       = var.create_monitoring ? module.monitoring[0].application_insights_id : null
-  description = "Application Insights ID"
-}
+# PoC: Monitoring outputs removed - using free Container Insights only
+# For production, add back: log_analytics_*, application_insights_*, action_group_*
+# See: PROJECT_LOGBOOK.md - Production Recommendations
 
-output "application_insights_instrumentation_key" {
-  value       = var.create_monitoring ? module.monitoring[0].application_insights_instrumentation_key : null
-  description = "Application Insights instrumentation key"
-  sensitive   = true
-}
-
-output "application_insights_connection_string" {
-  value       = var.create_monitoring ? module.monitoring[0].application_insights_connection_string : null
-  description = "Application Insights connection string"
-  sensitive   = true
-}
-
-output "action_group_id" {
-  value       = var.create_monitoring ? module.monitoring[0].action_group_id : null
-  description = "Action Group ID"
-}

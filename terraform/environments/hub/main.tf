@@ -33,17 +33,32 @@ data "azurerm_key_vault" "dify_kv" {
 
 # Resource Group para nuevos recursos Hub
 resource "azurerm_resource_group" "hub" {
-  name     = "cc-hub-rg"
+  name     = "cloudmind-hub-rg"
   location = var.location
   tags     = var.tags
 }
 
-# Container Registry (Shared)
+# AKS Namespaces - Configure namespaces in existing AKS cluster
+module "aks_namespaces" {
+  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/aks-namespaces?ref=master"
+
+  create_dify_namespace      = true
+  create_cloudmind_namespace = true
+  
+  enable_resource_quotas  = true
+  enable_network_policies = false  # PoC: disabled for simplicity
+  
+  common_labels = merge(var.tags, {
+    managed-by = "terraform"
+  })
+}
+
+# Container Registry (Shared) - PoC OPTIMIZED
 module "acr" {
   count  = var.create_acr ? 1 : 0
   source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/container-registry?ref=master"
 
-  resource_group_name           = "cc-acr-rg"
+  resource_group_name           = "cloudmind-acr-rg"
   location                      = var.location
   acr_name_prefix               = var.acr_config.name_prefix
   sku                           = var.acr_config.sku
@@ -52,7 +67,7 @@ module "acr" {
   retention_policy_enabled      = var.acr_config.retention_policy_enabled
   retention_policy_days         = var.acr_config.retention_policy_days
   
-  # Network rules (disabled for now, can be added later)
+  # Network rules (disabled for PoC)
   network_rule_set_enabled = false
 
   # Grant AKS Dify pull access
@@ -60,54 +75,21 @@ module "acr" {
     data.azurerm_kubernetes_cluster.dify_aks.kubelet_identity[0].object_id
   ]
 
-  # Will be set after monitoring module creates Log Analytics
-  log_analytics_workspace_id = var.create_monitoring ? module.monitoring[0].log_analytics_workspace_id : null
+  # PoC: No Log Analytics integration (uses Container Insights instead)
+  log_analytics_workspace_id = null
 
   tags = merge(var.tags, {
     Component = "container-registry"
   })
 }
 
-# Monitoring (Log Analytics + Application Insights)
-module "monitoring" {
-  count  = var.create_monitoring ? 1 : 0
-  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/monitoring?ref=master"
 
-  resource_group_name               = "cc-monitoring-rg"
-  location                          = var.location
-  log_analytics_name                = var.monitoring_config.log_analytics_name
-  log_analytics_sku                 = var.monitoring_config.log_analytics_sku
-  log_analytics_retention_days      = var.monitoring_config.log_analytics_retention
-  app_insights_name                 = var.monitoring_config.app_insights_name
-  app_insights_application_type     = var.monitoring_config.app_insights_type
-  enable_container_insights         = var.monitoring_config.enable_container_insights
+# PoC: Container Insights is already enabled on the existing AKS cluster
+# No additional monitoring resources needed - leverages free tier
+# For production, consider adding:
+# - Log Analytics Workspace
+# - Application Insights
+# - Azure Monitor Workbooks
+# - Alert Rules
+# See: PROJECT_LOGBOOK.md - Production Recommendations
 
-  # Action Group
-  create_action_group     = var.create_action_group
-  action_group_name       = var.action_group_config.name
-  action_group_short_name = var.action_group_config.short_name
-  action_group_emails     = var.action_group_config.emails
-  action_group_webhooks   = var.action_group_config.webhooks
-
-  tags = merge(var.tags, {
-    Component = "monitoring"
-  })
-}
-
-# Enable monitoring for existing Dify AKS
-# This adds OMS agent to existing AKS without recreating it
-resource "null_resource" "enable_aks_monitoring" {
-  count = var.create_monitoring ? 1 : 0
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      az aks enable-addons \
-        --resource-group ${data.azurerm_resource_group.dify.name} \
-        --name ${data.azurerm_kubernetes_cluster.dify_aks.name} \
-        --addons monitoring \
-        --workspace-resource-id ${module.monitoring[0].log_analytics_workspace_id}
-    EOT
-  }
-
-  depends_on = [module.monitoring]
-}

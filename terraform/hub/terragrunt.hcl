@@ -30,47 +30,49 @@ inputs = {
   existing_resources = local.existing_resources
   
   # Nuevos recursos a crear
-  # Container Registry
+  # Container Registry - OPTIMIZADO PARA POC
   create_acr = true
   acr_config = {
-    name_prefix                   = "ccacr"
-    sku                           = "Standard"
+    name_prefix                   = "dxccloudmind"
+    sku                           = "Basic"  # Cambiado de Standard a Basic para PoC
     admin_enabled                 = false
     public_network_access_enabled = true
-    retention_policy_enabled      = false  # Only available with Premium SKU
-    retention_policy_days         = 7      # Ignored when retention_policy_enabled=false
+    retention_policy_enabled      = false
+    retention_policy_days         = 7
   }
   
-  # Monitoring
-  create_monitoring = true
-  monitoring_config = {
-    log_analytics_name        = "cc-logs-workspace"
-    log_analytics_sku         = "PerGB2018"
-    log_analytics_retention   = 30
-    app_insights_name         = "cc-app-insights"
-    app_insights_type         = "web"
-    enable_container_insights = true
+  # Monitoring - SOLO GRATUITO (Container Insights)
+  # PoC: Sin Log Analytics adicional, sin App Insights, sin alertas premium
+  create_monitoring = false  # Desactivado - usaremos solo Container Insights gratuito del AKS existente
+  
+  # AKS Configuration - Single AKS con namespaces
+  aks_namespaces = {
+    dify = {
+      name = "dify"
+      labels = {
+        component = "ai-platform"
+        tier      = "core"
+      }
+    }
+    cloudmind = {
+      name = "cloudmind"
+      labels = {
+        component = "use-cases"
+        tier      = "workloads"
+      }
+    }
   }
   
-  # Action Group para alertas
-  create_action_group = true
-  action_group_config = {
-    name       = "cc-alerts"
-    short_name = "cc-alerts"
-    emails = {
-      admin = "alberto.lacambra@dxc.com"
-    }
-    webhooks = {
-      # slack = "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
-    }
-  }
+  # Teams Webhook para alertas (GRATUITO)
+  teams_webhook_url = ""  # Se configurará después de crear el webhook en Teams
   
   # Tags específicos Hub
   tags = {
-    Environment = "hub"
+    Project     = "DXC-Cloud-Mind"
+    Environment = "poc"
     CostCenter  = "shared-services"
-    Criticality = "high"
-    Backup      = "daily"
+    ManagedBy   = "terraform"
+    Repository  = "DXC_PoC_Nirvana"
   }
 }
 
