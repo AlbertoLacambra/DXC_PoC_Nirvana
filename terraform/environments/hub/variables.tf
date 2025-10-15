@@ -28,18 +28,6 @@ variable "acr_config" {
   description = "ACR configuration"
 }
 
-variable "acr_config" {
-  type = object({
-    name_prefix                   = string
-    sku                           = string
-    admin_enabled                 = bool
-    public_network_access_enabled = bool
-    retention_policy_enabled      = bool
-    retention_policy_days         = number
-  })
-  description = "ACR configuration"
-}
-
 # PoC: Monitoring variables removed - using free Container Insights only
 # For production, add back: monitoring_config, action_group_config
 # See: PROJECT_LOGBOOK.md - Production Recommendations

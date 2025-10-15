@@ -40,7 +40,7 @@ resource "azurerm_resource_group" "hub" {
 
 # AKS Namespaces - Configure namespaces in existing AKS cluster
 module "aks_namespaces" {
-  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/aks-namespaces?ref=master"
+  source = "../../modules/aks-namespaces"
 
   create_dify_namespace      = true
   create_cloudmind_namespace = true
@@ -56,7 +56,7 @@ module "aks_namespaces" {
 # Container Registry (Shared) - PoC OPTIMIZED
 module "acr" {
   count  = var.create_acr ? 1 : 0
-  source = "git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/container-registry?ref=master"
+  source = "../../modules/container-registry"
 
   resource_group_name           = "cloudmind-acr-rg"
   location                      = var.location
