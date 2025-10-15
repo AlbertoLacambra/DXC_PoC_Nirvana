@@ -139,6 +139,163 @@ main (production-ready)
 
 ## 📝 Historial de Cambios
 
+### **2025-10-15 - Implementación: Arquitectura Single-AKS + Monitoring Gratuito**
+
+**Tipo**: Implementación Técnica - Optimización PoC  
+**Autor**: Alberto Lacambra  
+**Estado**: 🟢 En Progreso (2/8 tareas completadas)
+
+#### Resumen Ejecutivo
+
+Iniciada implementación completa de la arquitectura optimizada para PoC aprobada en análisis anterior. Se ha completado la migración a Single-AKS con namespaces y la implementación de monitoring gratuito con Azure Workbooks.
+
+#### Tareas Completadas (2/8)
+
+**✅ Tarea 1: Arquitectura Single-AKS con Namespaces**
+- **Nuevo Módulo**: `terraform/modules/aks-namespaces`
+  - Configura 2 namespaces en AKS existente:
+    * `dify`: Dify AI Platform (core)
+    * `cloudmind`: Use cases y workloads
+  - Resource Quotas implementadas:
+    * Dify: 4-8 vCPUs, 8-16GB RAM, 50 pods
+    * Cloud Mind: 2-4 vCPUs, 4-8GB RAM, 30 pods
+  - Network Policies: Opcionales (deshabilitadas en PoC)
+  - **Costo**: $0/mes
+
+- **Hub Environment Actualizado**:
+  - Eliminado módulo `monitoring` (Log Analytics + App Insights)
+  - Eliminados Action Groups premium
+  - Resource Groups renombrados: `cc-*` → `cloudmind-*`
+  - ACR optimizado: `Standard` → `Basic` SKU
+  - ACR name prefix: `ccacr` → `dxccloudmind`
+  - Sin Log Analytics integration en ACR
+  
+- **Variables Simplificadas**:
+  - ❌ Eliminadas: `create_monitoring`, `monitoring_config`, `action_group_config`
+  - ✅ Agregadas: `aks_namespaces`, `teams_webhook_url`
+  
+- **Outputs Actualizados**:
+  - ✅ Nuevos: `dify_namespace`, `cloudmind_namespace`
+  - ❌ Eliminados: `log_analytics_*`, `application_insights_*`, `action_group_*`
+
+- **Ahorro**: -$60/mes (no desplegar nuevos AKS + eliminar monitoring premium)
+
+**✅ Tarea 2: Monitoring Gratuito con Azure Workbooks**
+- **Nuevo Módulo**: `terraform/modules/azure-workbooks`
+  - 4 Workbooks de monitorización (GRATUITOS):
+    1. **Drift Detection**: Cambios de infraestructura y drift desde Terraform state
+    2. **Pipeline Status**: Estado de GitHub Actions workflows (PR, deploy, drift, docs)
+    3. **AKS Resources**: CPU/Memoria por namespace, pod counts, node health
+    4. **Cost Tracking**: Seguimiento vs budget ($130/mes), recursos por RG
+  
+- **Características**:
+  - Data source: Log Analytics existente (`dify-private-logs`)
+  - Queries KQL pre-configuradas
+  - Integración con GitHub Actions (custom events)
+  - URLs directas a Azure Portal
+  - Compatible con Azure Mobile App
+  - **Costo**: $0/mes (Workbooks gratuitos, usa Container Insights existente)
+
+- **Container Insights**: Verificado habilitado en `dify-aks`, conectado a `dify-private-logs`
+  - Free tier suficiente para PoC
+  - Sin costos de ingesta adicionales
+
+#### Tareas En Progreso (1/8)
+
+**🔄 Tarea 3: Alertas a Microsoft Teams**
+- Próximos pasos:
+  - Crear Action Groups con webhooks a Teams
+  - Configurar alertas para drift detection
+  - Alertas de fallos en pipelines
+  - Eventos críticos de infraestructura
+- **Costo esperado**: $0/mes (Action Groups básicos gratuitos)
+
+#### Tareas Pendientes (5/8)
+
+4. ⏳ **GitHub Actions Workflows**:
+   - PR validation (fmt, validate, plan, cost estimate)
+   - Deployment con aprobaciones
+   - Integración con terraform-docs
+   - Notificaciones a Teams
+
+5. ⏳ **Drift Detection Automatizado**:
+   - Scheduled workflow (diario)
+   - Integración con Workbook
+   - Alertas a Teams
+
+6. ⏳ **Terraform-docs Automation**:
+   - Auto-generación en cada commit
+   - INFRASTRUCTURE.md con módulos
+
+7. ⏳ **Actualizar Documentación de Costes**:
+   - COST_ANALYSIS.md
+   - PROJECT_LOGBOOK.md (esta entrada)
+   - BUSINESS_PLAN.md con ahorros
+
+8. ⏳ **Testing y Validación**:
+   - Workflows end-to-end
+   - Validar alertas Teams
+   - Verificar Workbooks
+   - Confirmar ahorros
+
+#### Ahorro Total Proyectado
+
+| Concepto | Original | Optimizado | Ahorro |
+|----------|----------|------------|--------|
+| **AKS adicionales** | $300/mes | $0/mes | -$300/mes |
+| **Log Analytics** | $50/mes | $0/mes | -$50/mes |
+| **App Insights** | $10/mes | $0/mes | -$10/mes |
+| **ACR Standard → Basic** | $20/mes | $5/mes | -$15/mes |
+| **Total** | **$380/mes** | **~$5/mes** | **-$375/mes** |
+
+**Reducción**: 98.7% del costo  
+**Budget restante**: $125/mes (96% libre para escalado futuro)
+
+#### Commits Realizados
+
+```bash
+109dfc9 - feat: Migrar a arquitectura Single-AKS con namespaces
+9a1c9ec - feat: Agregar módulo Azure Workbooks para monitoring gratuito
+```
+
+#### Módulos Terraform Creados/Modificados
+
+1. **terraform/modules/aks-namespaces** (NUEVO)
+   - Namespaces con resource quotas
+   - Network policies opcionales
+   - Provider: kubernetes ~> 2.23
+
+2. **terraform/modules/azure-workbooks** (NUEVO)
+   - 4 workbooks de monitorización
+   - Queries KQL optimizadas
+   - Provider: azurerm ~> 3.80
+
+3. **terraform/modules/container-registry** (MODIFICADO)
+   - SKU optimizado para PoC
+   - Diagnostic settings condicionales
+   - Sin dependencia de Log Analytics
+
+4. **terraform/environments/hub** (MODIFICADO)
+   - Integración de nuevos módulos
+   - Configuración simplificada
+   - Eliminación de recursos premium
+
+#### Próximos Pasos Inmediatos
+
+1. Configurar Teams Incoming Webhook
+2. Crear Action Groups con integración Teams
+3. Implementar GitHub Actions workflows base
+4. Testing de alertas
+
+#### Notas Técnicas
+
+- **Kubernetes Provider**: Requiere configuración con kubeconfig de AKS existente
+- **Git Sources**: Todos los módulos usan `git::https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git//terraform/modules/...?ref=master`
+- **Backend State**: Azure Storage con containers separados (`cc-hub`, `cc-spoke-prod`, `cc-spoke-dev`)
+- **RBAC**: Storage Blob Data Contributor asignado, propagación validada
+
+---
+
 ### **2025-10-15 - Análisis de Optimizaciones: AKS Único + Monitorización Gratuita**
 
 **Tipo**: Decisión Estratégica - Optimización de Arquitectura y Costes  
