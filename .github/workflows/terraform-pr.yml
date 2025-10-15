@@ -15,7 +15,6 @@ permissions:
 
 env:
   TERRAFORM_VERSION: '1.5.5'
-  TERRAGRUNT_VERSION: '0.55.0'
   TFSEC_VERSION: 'latest'
   CHECKOV_VERSION: 'latest'
   INFRACOST_VERSION: 'latest'
@@ -28,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
     
     steps:
       - name: Checkout code
@@ -41,13 +40,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Setup Terragrunt
-        run: |
-          wget https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
-          chmod +x terragrunt_linux_amd64
-          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-          terragrunt --version
+          terraform_wrapper: false
 
       - name: Azure Login - OIDC
         uses: azure/login@v2
@@ -61,14 +54,19 @@ jobs:
       # ============================================
       - name: 🎨 Terraform Format Check
         id: fmt
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 🎨 Terraform Format Check" >> $GITHUB_STEP_SUMMARY
-          if terragrunt fmt -check -recursive -diff; then
+          if terraform fmt -check -recursive -diff; then
             echo "✅ **PASSED**: All files properly formatted" >> $GITHUB_STEP_SUMMARY
             echo "result=✅ PASSED" >> $GITHUB_OUTPUT
           else
             echo "❌ **FAILED**: Some files need formatting" >> $GITHUB_STEP_SUMMARY
-            echo "Run: \`terragrunt fmt -recursive\`" >> $GITHUB_STEP_SUMMARY
+            echo "Run: \`terraform fmt -recursive\`" >> $GITHUB_STEP_SUMMARY
             echo "result=❌ FAILED" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -78,10 +76,15 @@ jobs:
       # ============================================
       - name: 🔍 Terraform Validate
         id: validate
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 🔍 Terraform Validation" >> $GITHUB_STEP_SUMMARY
-          terragrunt init -backend=false
-          if terragrunt validate; then
+          terraform init -backend=false
+          if terraform validate; then
             echo "✅ **PASSED**: Configuration is valid" >> $GITHUB_STEP_SUMMARY
             echo "result=✅ PASSED" >> $GITHUB_OUTPUT
           else
@@ -161,7 +164,7 @@ jobs:
       - name: Generate Infracost Breakdown
         run: |
           infracost breakdown \
-            --path terraform/hub \
+            --path terraform/environments/hub \
             --format json \
             --out-file /tmp/infracost.json
 
@@ -191,7 +194,7 @@ jobs:
         id: terraform_docs
         uses: terraform-docs/gh-actions@v1.0.0
         with:
-          working-dir: terraform
+          working-dir: terraform/environments/hub
           output-file: README.md
           output-method: inject
           git-push: false
@@ -221,8 +224,13 @@ jobs:
       # ============================================
       - name: 🎯 Terraform Plan
         id: plan
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
-          terragrunt plan -out=tfplan -no-color 2>&1 | tee plan_output.txt
+          terraform plan -out=tfplan -no-color 2>&1 | tee plan_output.txt
           echo "plan_exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
       - name: Format Plan Output for PR Comment

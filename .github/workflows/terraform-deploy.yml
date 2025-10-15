@@ -27,7 +27,6 @@ permissions:
 
 env:
   TERRAFORM_VERSION: '1.5.5'
-  TERRAGRUNT_VERSION: '0.55.0'
   TERRAFORM_DOCS_VERSION: 'v0.17.0'
   AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
 
@@ -40,7 +39,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: terraform/${{ github.event.inputs.environment || 'hub' }}
+        working-directory: terraform/environments/${{ github.event.inputs.environment || 'hub' }}
     
     steps:
       - name: Checkout code
@@ -50,13 +49,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Setup Terragrunt
-        run: |
-          wget https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
-          chmod +x terragrunt_linux_amd64
-          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-          terragrunt --version
+          terraform_wrapper: false
 
       - name: Azure Login - OIDC
         uses: azure/login@v2
@@ -70,17 +63,29 @@ jobs:
       # ============================================
       - name: 🔍 Pre-Deploy Validation
         id: validate
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 🔍 Pre-Deploy Validation" >> $GITHUB_STEP_SUMMARY
-          terragrunt init
-          terragrunt validate
+          terraform init
+          terraform validate
           echo "✅ Configuration validated successfully" >> $GITHUB_STEP_SUMMARY
 
       - name: 📋 Generate Deployment Plan
         id: plan
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 📋 Deployment Plan" >> $GITHUB_STEP_SUMMARY
-          terragrunt plan -out=tfplan -no-color 2>&1 | tee plan.txt
+          terraform plan -out=tfplan -no-color 2>&1 | tee plan.txt
           
           # Extract summary
           RESOURCES_TO_ADD=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to add)' || echo "0")
@@ -100,6 +105,12 @@ jobs:
       # ============================================
       - name: 🚀 Terraform Apply
         id: apply
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 🚀 Terraform Apply" >> $GITHUB_STEP_SUMMARY
           echo "**Environment**: ${{ github.event.inputs.environment || 'hub' }}" >> $GITHUB_STEP_SUMMARY
@@ -107,7 +118,7 @@ jobs:
           echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          terragrunt apply -auto-approve tfplan 2>&1 | tee apply.txt
+          terraform apply -auto-approve tfplan 2>&1 | tee apply.txt
           
           if [ $? -eq 0 ]; then
             echo "✅ **Deployment successful**" >> $GITHUB_STEP_SUMMARY
@@ -121,9 +132,15 @@ jobs:
       - name: 📊 Extract Outputs
         id: outputs
         if: steps.apply.outputs.status == 'success'
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           echo "### 📊 Terraform Outputs" >> $GITHUB_STEP_SUMMARY
-          terragrunt output -json > outputs.json
+          terraform output -json > outputs.json
           
           # Display non-sensitive outputs
           echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
@@ -137,7 +154,7 @@ jobs:
         if: steps.apply.outputs.status == 'success'
         uses: terraform-docs/gh-actions@v1.0.0
         with:
-          working-dir: terraform
+          working-dir: terraform/environments/hub
           output-file: README.md
           output-method: inject
           git-push: true
@@ -201,7 +218,7 @@ jobs:
             --auth-mode login || true
           
           # Restore previous state
-          terragrunt apply -auto-approve || true
+          terraform apply -auto-approve || true
           
           echo "❌ **Rollback attempted** - Manual verification required" >> $GITHUB_STEP_SUMMARY
 
