@@ -23,7 +23,7 @@ permissions:
 
 env:
   TERRAFORM_VERSION: '1.5.5'
-  TERRAGRUNT_VERSION: '0.55.0'
+  
   AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
 
 jobs:
@@ -47,12 +47,7 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
-      - name: 🔧 Setup Terragrunt
-        run: |
-          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
-          chmod +x terragrunt_linux_amd64
-          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-          terragrunt --version
+          terraform --version
 
       - name: 🔐 Azure Login
         uses: azure/login@v2
@@ -62,15 +57,15 @@ jobs:
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: 🔍 Terraform Init
-        working-directory: terraform/hub
-        run: terragrunt init
+        working-directory: terraform/environments/hub
+        run: terraform init
 
       - name: 🔎 Terraform Plan (Drift Detection)
         id: drift
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
           set +e
-          terragrunt plan -detailed-exitcode -no-color > drift_output.txt 2>&1
+          terraform plan -detailed-exitcode -no-color > drift_output.txt 2>&1
           EXIT_CODE=$?
           set -e
           
@@ -114,13 +109,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: drift-report-hub-${{ github.run_number }}
-          path: terraform/hub/drift_output.txt
+          path: terraform/environments/hub/drift_output.txt
           retention-days: 90
 
       - name: 📊 Parse Drift Details
         if: steps.drift.outputs.has_drift == 'true'
         id: details
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
           # Extraer recursos con drift
           echo "## Recursos con Drift Detectado" > drift_summary.md
@@ -135,7 +130,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: drift-summary-hub-${{ github.run_number }}
-          path: terraform/hub/drift_summary.md
+          path: terraform/environments/hub/drift_summary.md
           retention-days: 90
 
   # ========================================

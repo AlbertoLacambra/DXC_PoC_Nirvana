@@ -77,8 +77,8 @@ inputs = {
 }
 
 # Terraform source para Hub
-# Note: environments/hub contains a symlink to ../../modules
-# This allows Terragrunt to copy both the environment code and modules
+# Execute directly in the environments/hub directory (no cache)
+# This allows module paths like ../../modules/* to work correctly
 terraform {
-  source = "${get_parent_terragrunt_dir()}/environments/hub"
+  source = "${get_parent_terragrunt_dir()}/environments/hub//."
 }

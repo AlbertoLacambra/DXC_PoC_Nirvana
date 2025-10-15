@@ -31,7 +31,6 @@ permissions:
 
 env:
   TERRAFORM_VERSION: '1.5.5'
-  TERRAGRUNT_VERSION: '0.55.0'
   AZURE_SUBSCRIPTION_ID: '739aaf91-5cb2-45a6-ab4f-abf883e9d3f7'
 
 jobs:
@@ -81,14 +80,7 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
-      - name: 🔧 Setup Terragrunt
-        run: |
-          wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
-          chmod +x terragrunt_linux_amd64
-          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-          terragrunt --version
-
-      - name: 🔐 Azure Login
+      - name:  Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -96,14 +88,14 @@ jobs:
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: 🔍 Terraform Init
-        working-directory: terraform/hub
-        run: terragrunt init
+        working-directory: terraform/environments/hub
+        run: terraform init
 
       - name: 📋 Terraform Plan
         id: plan
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
-          terragrunt plan -out=tfplan -detailed-exitcode -no-color > plan_output.txt 2>&1 || EXIT_CODE=$?
+          terraform plan -out=tfplan -detailed-exitcode -no-color > plan_output.txt 2>&1 || EXIT_CODE=$?
           cat plan_output.txt
           
           # detailed-exitcode returns:
@@ -122,7 +114,7 @@ jobs:
       - name: 📊 Extract Plan Summary
         id: summary
         if: always()
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
           if [ -f plan_output.txt ]; then
             TO_ADD=$(grep -oP '\d+(?= to add)' plan_output.txt | head -1 || echo "0")
@@ -172,9 +164,9 @@ jobs:
 
       - name: 🚀 Terraform Apply
         if: steps.plan.outputs.has_changes == 'true'
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
-          terragrunt apply tfplan
+          terraform apply tfplan
 
       - name: ℹ️ No Changes
         if: steps.plan.outputs.has_changes == 'false'
@@ -184,9 +176,9 @@ jobs:
       - name: 📊 Get Terraform Outputs
         if: steps.plan.outputs.has_changes == 'true'
         id: outputs
-        working-directory: terraform/hub
+        working-directory: terraform/environments/hub
         run: |
-          terragrunt output -json > outputs.json
+          terraform output -json > outputs.json
           cat outputs.json
 
       - name: 💾 Upload Terraform Outputs
@@ -194,7 +186,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraform-outputs-hub
-          path: terraform/hub/outputs.json
+          path: terraform/environments/hub/outputs.json
           retention-days: 30
 
   # ========================================
