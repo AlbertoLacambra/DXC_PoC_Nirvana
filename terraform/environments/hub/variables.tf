@@ -28,6 +28,28 @@ variable "acr_config" {
   description = "ACR configuration"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "northeurope"
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment name"
+  default     = "hub"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "Common tags for all resources"
+  default = {
+    Project     = "DXC-Cloud-Mind"
+    Environment = "poc"
+    ManagedBy   = "terraform"
+  }
+}
+
 # PoC: Monitoring variables removed - using free Container Insights only
 # For production, add back: monitoring_config, action_group_config
 # See: PROJECT_LOGBOOK.md - Production Recommendations
