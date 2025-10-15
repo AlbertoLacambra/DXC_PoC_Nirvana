@@ -1,0 +1,288 @@
+name: Terraform PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-pr.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  TERRAFORM_VERSION: '1.5.5'
+  TERRAGRUNT_VERSION: '0.55.0'
+  TFSEC_VERSION: 'latest'
+  CHECKOV_VERSION: 'latest'
+  INFRACOST_VERSION: 'latest'
+  TERRAFORM_DOCS_VERSION: 'v0.17.0'
+
+jobs:
+  validation:
+    name: Terraform Validation & Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/hub
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Setup Terragrunt
+        run: |
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Azure Login - OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ============================================
+      # GATE 1: Terraform Formatting
+      # ============================================
+      - name: 🎨 Terraform Format Check
+        id: fmt
+        run: |
+          echo "### 🎨 Terraform Format Check" >> $GITHUB_STEP_SUMMARY
+          if terragrunt fmt -check -recursive -diff; then
+            echo "✅ **PASSED**: All files properly formatted" >> $GITHUB_STEP_SUMMARY
+            echo "result=✅ PASSED" >> $GITHUB_OUTPUT
+          else
+            echo "❌ **FAILED**: Some files need formatting" >> $GITHUB_STEP_SUMMARY
+            echo "Run: \`terragrunt fmt -recursive\`" >> $GITHUB_STEP_SUMMARY
+            echo "result=❌ FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # ============================================
+      # GATE 2: Terraform Validation
+      # ============================================
+      - name: 🔍 Terraform Validate
+        id: validate
+        run: |
+          echo "### 🔍 Terraform Validation" >> $GITHUB_STEP_SUMMARY
+          terragrunt init -backend=false
+          if terragrunt validate; then
+            echo "✅ **PASSED**: Configuration is valid" >> $GITHUB_STEP_SUMMARY
+            echo "result=✅ PASSED" >> $GITHUB_OUTPUT
+          else
+            echo "❌ **FAILED**: Configuration has errors" >> $GITHUB_STEP_SUMMARY
+            echo "result=❌ FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # ============================================
+      # GATE 3: Security Scan (tfsec)
+      # ============================================
+      - name: 🔐 Security Scan - tfsec
+        id: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: terraform
+          format: sarif
+          soft_fail: false
+        continue-on-error: true
+
+      - name: Upload tfsec SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: tfsec.sarif
+
+      - name: tfsec Summary
+        if: always()
+        run: |
+          echo "### 🔐 Security Scan (tfsec)" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.tfsec.outcome }}" == "success" ]; then
+            echo "✅ **PASSED**: No security issues found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAILED**: Security issues detected - check SARIF report" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ============================================
+      # GATE 4: Compliance Check (checkov)
+      # ============================================
+      - name: 📋 Compliance Check - checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          framework: terraform
+          soft_fail: false
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          download_external_modules: true
+        continue-on-error: true
+
+      - name: Upload checkov SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+
+      - name: checkov Summary
+        if: always()
+        run: |
+          echo "### 📋 Compliance Check (checkov)" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.checkov.outcome }}" == "success" ]; then
+            echo "✅ **PASSED**: All compliance checks passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **WARNING**: Some compliance issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ============================================
+      # GATE 5: Cost Estimation (infracost)
+      # ============================================
+      - name: 💰 Cost Estimation - infracost
+        id: infracost
+        uses: infracost/actions/setup@v2
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost Breakdown
+        run: |
+          infracost breakdown \
+            --path terraform/hub \
+            --format json \
+            --out-file /tmp/infracost.json
+
+      - name: Post Infracost Comment
+        uses: infracost/actions/comment@v1
+        with:
+          path: /tmp/infracost.json
+          behavior: update
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: infracost Summary
+        run: |
+          echo "### 💰 Cost Estimation" >> $GITHUB_STEP_SUMMARY
+          echo "See PR comment for detailed cost breakdown" >> $GITHUB_STEP_SUMMARY
+          MONTHLY_COST=$(jq -r '.projects[0].breakdown.totalMonthlyCost' /tmp/infracost.json)
+          echo "**Estimated Monthly Cost**: \$$MONTHLY_COST" >> $GITHUB_STEP_SUMMARY
+          if (( $(echo "$MONTHLY_COST > 100" | bc -l) )); then
+            echo "⚠️ **WARNING**: Cost exceeds $100/month threshold" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Within budget ($130/month)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ============================================
+      # GATE 6: Documentation Generation (terraform-docs)
+      # ============================================
+      - name: 📚 Generate Terraform Docs
+        id: terraform_docs
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          working-dir: terraform
+          output-file: README.md
+          output-method: inject
+          git-push: false
+          recursive: true
+          recursive-path: modules,environments
+
+      - name: Commit Updated Docs
+        if: steps.terraform_docs.outputs.num_changed > 0
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add terraform/**/README.md
+          git commit -m "docs(terraform): Auto-update documentation [skip ci]"
+          git push
+
+      - name: terraform-docs Summary
+        run: |
+          echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.terraform_docs.outputs.num_changed }}" -gt 0 ]; then
+            echo "✅ Documentation updated (${{ steps.terraform_docs.outputs.num_changed }} files)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ Documentation up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ============================================
+      # GATE 7: Terraform Plan Preview
+      # ============================================
+      - name: 🎯 Terraform Plan
+        id: plan
+        run: |
+          terragrunt plan -out=tfplan -no-color 2>&1 | tee plan_output.txt
+          echo "plan_exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Format Plan Output for PR Comment
+        id: plan_format
+        if: always()
+        run: |
+          PLAN_OUTPUT=$(cat plan_output.txt | grep -A 1000 "Terraform will perform" || echo "No changes")
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$PLAN_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `
+            ## 🚀 Terraform PR Validation Results
+            
+            | Gate | Status | Details |
+            |------|--------|---------|
+            | 🎨 Format | ${{ steps.fmt.outputs.result }} | Code formatting |
+            | 🔍 Validate | ${{ steps.validate.outputs.result }} | Syntax check |
+            | 🔐 Security | ${{ steps.tfsec.outcome == 'success' && '✅ PASSED' || '❌ FAILED' }} | tfsec scan |
+            | 📋 Compliance | ${{ steps.checkov.outcome == 'success' && '✅ PASSED' || '⚠️ WARNING' }} | checkov scan |
+            | 💰 Cost | ℹ️ INFO | See comment above |
+            | 📚 Docs | ✅ UPDATED | terraform-docs |
+            | 🎯 Plan | ${{ steps.plan.outputs.plan_exitcode == '0' && '✅ SUCCESS' || '❌ FAILED' }} | Infrastructure preview |
+            
+            <details>
+            <summary>📋 Terraform Plan Output</summary>
+            
+            \`\`\`
+            ${{ steps.plan_format.outputs.plan_output }}
+            \`\`\`
+            
+            </details>
+            
+            ---
+            
+            **Ready to merge**: ${{ steps.fmt.outputs.result == '✅ PASSED' && steps.validate.outputs.result == '✅ PASSED' && steps.tfsec.outcome == 'success' && '✅ YES' || '❌ NO - Fix issues above' }}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Final Summary
+        if: always()
+        run: |
+          echo "## 🎯 Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.fmt.outputs.result }}" == "✅ PASSED" ] && \
+             [ "${{ steps.validate.outputs.result }}" == "✅ PASSED" ] && \
+             [ "${{ steps.tfsec.outcome }}" == "success" ]; then
+            echo "✅ **All critical gates passed - PR ready for review**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some gates failed - review and fix before merging**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

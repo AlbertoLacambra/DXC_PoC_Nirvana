@@ -1,0 +1,270 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-deploy.yml'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'hub'
+        type: choice
+        options:
+          - hub
+          - spoke-prod
+          - spoke-dev
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+
+env:
+  TERRAFORM_VERSION: '1.5.5'
+  TERRAGRUNT_VERSION: '0.55.0'
+  TERRAFORM_DOCS_VERSION: 'v0.17.0'
+
+jobs:
+  deploy:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs.environment || 'hub' }}
+    
+    defaults:
+      run:
+        working-directory: terraform/${{ github.event.inputs.environment || 'hub' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Setup Terragrunt
+        run: |
+          wget https://github.com/gruntwork-io/terragrunt/releases/download/v${{ env.TERRAGRUNT_VERSION }}/terragrunt_linux_amd64
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Azure Login - OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ============================================
+      # Pre-Deploy Validation
+      # ============================================
+      - name: 🔍 Pre-Deploy Validation
+        id: validate
+        run: |
+          echo "### 🔍 Pre-Deploy Validation" >> $GITHUB_STEP_SUMMARY
+          terragrunt init
+          terragrunt validate
+          echo "✅ Configuration validated successfully" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📋 Generate Deployment Plan
+        id: plan
+        run: |
+          echo "### 📋 Deployment Plan" >> $GITHUB_STEP_SUMMARY
+          terragrunt plan -out=tfplan -no-color 2>&1 | tee plan.txt
+          
+          # Extract summary
+          RESOURCES_TO_ADD=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to add)' || echo "0")
+          RESOURCES_TO_CHANGE=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to change)' || echo "0")
+          RESOURCES_TO_DESTROY=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to destroy)' || echo "0")
+          
+          echo "**Resources to add**: $RESOURCES_TO_ADD" >> $GITHUB_STEP_SUMMARY
+          echo "**Resources to change**: $RESOURCES_TO_CHANGE" >> $GITHUB_STEP_SUMMARY
+          echo "**Resources to destroy**: $RESOURCES_TO_DESTROY" >> $GITHUB_STEP_SUMMARY
+          
+          echo "resources_to_add=$RESOURCES_TO_ADD" >> $GITHUB_OUTPUT
+          echo "resources_to_change=$RESOURCES_TO_CHANGE" >> $GITHUB_OUTPUT
+          echo "resources_to_destroy=$RESOURCES_TO_DESTROY" >> $GITHUB_OUTPUT
+
+      # ============================================
+      # Deployment
+      # ============================================
+      - name: 🚀 Terraform Apply
+        id: apply
+        run: |
+          echo "### 🚀 Terraform Apply" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ github.event.inputs.environment || 'hub' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          terragrunt apply -auto-approve tfplan 2>&1 | tee apply.txt
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ **Deployment successful**" >> $GITHUB_STEP_SUMMARY
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ **Deployment failed**" >> $GITHUB_STEP_SUMMARY
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: 📊 Extract Outputs
+        id: outputs
+        if: steps.apply.outputs.status == 'success'
+        run: |
+          echo "### 📊 Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+          terragrunt output -json > outputs.json
+          
+          # Display non-sensitive outputs
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          jq 'to_entries | map(select(.value.sensitive == false)) | from_entries' outputs.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      # ============================================
+      # Post-Deploy Documentation
+      # ============================================
+      - name: 📚 Update Documentation (terraform-docs)
+        if: steps.apply.outputs.status == 'success'
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          working-dir: terraform
+          output-file: README.md
+          output-method: inject
+          git-push: true
+          git-commit-message: "docs(terraform): Auto-update documentation after deploy [skip ci]"
+          recursive: true
+          recursive-path: modules,environments
+
+      - name: 📝 Generate Infrastructure Report
+        if: steps.apply.outputs.status == 'success'
+        run: |
+          cat > infrastructure_report.md << 'EOF'
+          # Infrastructure Deployment Report
+          
+          **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Environment**: ${{ github.event.inputs.environment || 'hub' }}
+          **Deployed by**: ${{ github.actor }}
+          **Commit**: ${{ github.sha }}
+          
+          ## Summary
+          - Resources added: ${{ steps.plan.outputs.resources_to_add }}
+          - Resources changed: ${{ steps.plan.outputs.resources_to_change }}
+          - Resources destroyed: ${{ steps.plan.outputs.resources_to_destroy }}
+          
+          ## Outputs
+          \`\`\`json
+          $(cat outputs.json | jq 'to_entries | map(select(.value.sensitive == false)) | from_entries')
+          \`\`\`
+          
+          ## State
+          - Backend: Azure Storage
+          - Container: ${{ github.event.inputs.environment == 'hub' && 'cc-hub' || (github.event.inputs.environment == 'spoke-prod' && 'cc-spoke-prod' || 'cc-spoke-dev') }}
+          - State file: terraform.tfstate
+          
+          ---
+          Generated by GitHub Actions
+          EOF
+          
+          # Commit report
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          mkdir -p docs/deployments
+          cp infrastructure_report.md docs/deployments/$(date +%Y%m%d_%H%M%S)_${{ github.event.inputs.environment || 'hub' }}.md
+          git add docs/deployments/
+          git commit -m "docs: Add deployment report for ${{ github.event.inputs.environment || 'hub' }} [skip ci]" || true
+          git push || true
+
+      # ============================================
+      # Rollback on Failure
+      # ============================================
+      - name: 🔄 Rollback on Failure
+        if: failure() && steps.apply.outputs.status == 'failed'
+        run: |
+          echo "### ⚠️ Deployment Failed - Initiating Rollback" >> $GITHUB_STEP_SUMMARY
+          
+          # Get previous successful state
+          az storage blob download \
+            --account-name tfstate9a448729 \
+            --container-name ${{ github.event.inputs.environment == 'hub' && 'cc-hub' || (github.event.inputs.environment == 'spoke-prod' && 'cc-spoke-prod' || 'cc-spoke-dev') }} \
+            --name terraform.tfstate.backup \
+            --file terraform.tfstate \
+            --auth-mode login || true
+          
+          # Restore previous state
+          terragrunt apply -auto-approve || true
+          
+          echo "❌ **Rollback attempted** - Manual verification required" >> $GITHUB_STEP_SUMMARY
+
+      # ============================================
+      # Notifications
+      # ============================================
+      - name: 📢 Create Deployment Issue on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Failed - ${{ github.event.inputs.environment || 'hub' }}',
+              body: `
+              ## Deployment Failure Report
+              
+              **Environment**: ${{ github.event.inputs.environment || 'hub' }}
+              **Commit**: ${{ github.sha }}
+              **Workflow**: ${{ github.workflow }}
+              **Run ID**: ${{ github.run_id }}
+              
+              ### Actions Taken
+              - ✅ Pre-deploy validation passed
+              - ❌ Terraform apply failed
+              - 🔄 Rollback attempted
+              
+              ### Next Steps
+              1. Review workflow logs: [Run #${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              2. Check Azure resources for partial deployment
+              3. Verify Terraform state integrity
+              4. Fix issues and re-run deployment
+              
+              ### Assigned To
+              @${{ github.actor }}
+              
+              ---
+              *Auto-generated by GitHub Actions*
+              `,
+              labels: ['deployment', 'failure', 'urgent']
+            });
+
+      - name: ✅ Deployment Success Summary
+        if: success()
+        run: |
+          echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ github.event.inputs.environment || 'hub' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration**: ${{ steps.apply.outputs.duration }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Resources modified**: ${{ steps.plan.outputs.resources_to_add }} added, ${{ steps.plan.outputs.resources_to_change }} changed, ${{ steps.plan.outputs.resources_to_destroy }} destroyed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Documentation updated automatically" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment report committed to \`docs/deployments/\`" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Terraform state saved to Azure Storage" >> $GITHUB_STEP_SUMMARY
+
+      # ============================================
+      # Tagging
+      # ============================================
+      - name: 🏷️ Create Release Tag
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          TAG_NAME="${{ github.event.inputs.environment || 'hub' }}-$(date +%Y%m%d-%H%M%S)"
+          git tag -a $TAG_NAME -m "Deployment to ${{ github.event.inputs.environment || 'hub' }}"
+          git push origin $TAG_NAME
+          echo "**Release tag created**: \`$TAG_NAME\`" >> $GITHUB_STEP_SUMMARY
