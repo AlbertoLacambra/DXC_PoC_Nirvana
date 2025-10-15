@@ -323,4 +323,4 @@ jobs:
                 }
               }]
             }' \
-            '${{ secrets.TEAMS_WEBHOOK_URL }}'
+            "${{ secrets.TEAMS_WEBHOOK_URL }}"
