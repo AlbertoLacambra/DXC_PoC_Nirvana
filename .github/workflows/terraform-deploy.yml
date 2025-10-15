@@ -85,13 +85,30 @@ jobs:
           ARM_USE_OIDC: true
         run: |
           echo "### 📋 Deployment Plan" >> $GITHUB_STEP_SUMMARY
+          
+          # Run terraform plan and capture exit code
+          set +e  # Don't exit on error
           terraform plan -out=tfplan -no-color 2>&1 | tee plan.txt
+          PLAN_EXIT_CODE=${PIPESTATUS[0]}
+          set -e  # Re-enable exit on error
+          
+          # Check if plan succeeded
+          if [ $PLAN_EXIT_CODE -ne 0 ]; then
+            echo "❌ **Terraform plan failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -50 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit $PLAN_EXIT_CODE
+          fi
           
           # Extract summary
           RESOURCES_TO_ADD=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to add)' || echo "0")
           RESOURCES_TO_CHANGE=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to change)' || echo "0")
           RESOURCES_TO_DESTROY=$(grep "Plan:" plan.txt | grep -oP '\d+(?= to destroy)' || echo "0")
           
+          echo "✅ **Plan generated successfully**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Resources to add**: $RESOURCES_TO_ADD" >> $GITHUB_STEP_SUMMARY
           echo "**Resources to change**: $RESOURCES_TO_CHANGE" >> $GITHUB_STEP_SUMMARY
           echo "**Resources to destroy**: $RESOURCES_TO_DESTROY" >> $GITHUB_STEP_SUMMARY
@@ -99,12 +116,14 @@ jobs:
           echo "resources_to_add=$RESOURCES_TO_ADD" >> $GITHUB_OUTPUT
           echo "resources_to_change=$RESOURCES_TO_CHANGE" >> $GITHUB_OUTPUT
           echo "resources_to_destroy=$RESOURCES_TO_DESTROY" >> $GITHUB_OUTPUT
+          echo "plan_exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
 
       # ============================================
       # Deployment
       # ============================================
       - name: 🚀 Terraform Apply
         id: apply
+        if: steps.plan.outputs.plan_exit_code == '0'
         working-directory: terraform/environments/hub
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
