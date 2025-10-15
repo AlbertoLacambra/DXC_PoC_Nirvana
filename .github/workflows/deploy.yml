@@ -4,8 +4,36 @@ on:
   push:
     branches:
       - master
-      - main
-    paths:
+         - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 🔍 Terraform Init
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: terraform init
+
+      - name: 📋 Terraform Plan
+        id: plan
+        working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform plan -out=tfplan -detailed-exitcode -no-color > plan_output.txt 2>&1 || EXIT_CODE=$?
+          cat plan_output.txt
+          
+          # detailed-exitcode returns:
+          # 0 - No changes:
       - 'terraform/**'
       - '.github/workflows/deploy.yml'
   
@@ -165,6 +193,11 @@ jobs:
       - name: 🚀 Terraform Apply
         if: steps.plan.outputs.has_changes == 'true'
         working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           terraform apply tfplan
 
@@ -177,6 +210,11 @@ jobs:
         if: steps.plan.outputs.has_changes == 'true'
         id: outputs
         working-directory: terraform/environments/hub
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           terraform output -json > outputs.json
           cat outputs.json

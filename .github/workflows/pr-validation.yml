@@ -100,11 +100,11 @@ jobs:
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: 🔍 Terraform Init
-        working-directory: terraform/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
         run: terraform init -backend=false
 
       - name: ✅ Terraform Validate
-        working-directory: terraform/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
         run: terraform validate
 
   # ========================================
@@ -139,12 +139,22 @@ jobs:
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
       - name: 🔍 Terraform Init
-        working-directory: terraform/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: terraform init
 
       - name: 📋 Terraform Plan
         id: plan
-        working-directory: terraform/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_USE_OIDC: true
         run: |
           terraform plan -out=tfplan -no-color > plan_output.txt 2>&1
           cat plan_output.txt
@@ -153,7 +163,7 @@ jobs:
       - name: 📊 Extract Plan Summary
         id: summary
         if: always()
-        working-directory: terraform/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
         run: |
           if [ -f plan_output.txt ]; then
             # Extraer resumen del plan
@@ -178,8 +188,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const planOutput = fs.existsSync('terraform/${{ matrix.environment }}/plan_output.txt')
-              ? fs.readFileSync('terraform/${{ matrix.environment }}/plan_output.txt', 'utf8')
+            const planOutput = fs.existsSync('terraform/environments/${{ matrix.environment }}/plan_output.txt')
+              ? fs.readFileSync('terraform/environments/${{ matrix.environment }}/plan_output.txt', 'utf8')
               : 'Plan output not available';
             
             const summary = '${{ steps.summary.outputs.summary }}';
