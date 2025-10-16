@@ -13,6 +13,10 @@
          <lastmod>2025-10-16</lastmod>
     </url>
     <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/business-plan/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/status/</loc>
          <lastmod>2025-10-16</lastmod>
     </url>
@@ -25,7 +29,79 @@
          <lastmod>2025-10-16</lastmod>
     </url>
     <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/adr/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/deployed-resources/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/overview/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/single-aks/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/deployment/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/drift-detection/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/pr-validation/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/security/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/workflows/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/analysis/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/optimization/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/roi/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/migration/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/quick-start/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/secrets-setup/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/teams-troubleshooting/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/github-actions/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/links/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/terraform-modules/</loc>
          <lastmod>2025-10-16</lastmod>
     </url>
 </urlset>
