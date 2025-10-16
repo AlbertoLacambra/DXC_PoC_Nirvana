@@ -30,3 +30,11 @@ data "azurerm_key_vault" "dify_kv" {
   name                = var.existing_resources.key_vault_name
   resource_group_name = data.azurerm_resource_group.dify.name
 }
+
+# Reference existing dify namespace - not managed by Terraform
+# This namespace already exists in the AKS cluster
+data "kubernetes_namespace" "dify_existing" {
+  metadata {
+    name = "dify"
+  }
+}

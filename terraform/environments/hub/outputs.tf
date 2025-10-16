@@ -80,13 +80,13 @@ output "acr_login_server" {
 
 # AKS Namespaces
 output "dify_namespace" {
-  value       = module.aks_namespaces.dify_namespace_name
-  description = "Dify namespace name"
+  value       = data.kubernetes_namespace.dify_existing.metadata[0].name
+  description = "Dify namespace name (existing, not managed by Terraform)"
 }
 
 output "cloudmind_namespace" {
   value       = module.aks_namespaces.cloudmind_namespace_name
-  description = "Cloud Mind namespace name"
+  description = "Cloud Mind namespace name (managed by Terraform)"
 }
 
 # PoC: Monitoring outputs removed - using free Container Insights only

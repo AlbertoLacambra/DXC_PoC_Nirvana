@@ -10,10 +10,11 @@ resource "azurerm_resource_group" "hub" {
 }
 
 # AKS Namespaces - Configure namespaces in existing AKS cluster
+# Note: dify namespace already exists, only create cloudmind namespace
 module "aks_namespaces" {
   source = "../../modules/aks-namespaces"
 
-  create_dify_namespace      = true
+  create_dify_namespace      = false  # Already exists in the cluster
   create_cloudmind_namespace = true
   
   enable_resource_quotas  = true
