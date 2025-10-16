@@ -178,8 +178,7 @@ jobs:
           output-method: inject
           git-push: true
           git-commit-message: "docs(terraform): Auto-update documentation after deploy [skip ci]"
-          recursive: true
-          recursive-path: modules,environments
+          recursive: false
 
       - name: 📝 Generate Infrastructure Report
         if: steps.apply.outputs.status == 'success'

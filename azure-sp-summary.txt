@@ -1,0 +1,44 @@
+=================================================================
+Service Principal Configuration Summary
+=================================================================
+Date: Wed Oct 15 15:07:49 CEST 2025
+
+Service Principal Details:
+-----------------------------------------------------------------
+Name:           github-actions-dxc-nirvana
+Client ID:      f704d3ce-5d4e-4af6-bf59-bdad32729407
+Tenant ID:      93f33571-550f-43cf-b09f-cd331338d086
+Subscription:   739aaf91-5cb2-45a6-ab4f-abf883e9d3f7
+Role:           Contributor
+
+GitHub Secrets to Configure:
+-----------------------------------------------------------------
+Name: AZURE_CLIENT_ID
+Value: f704d3ce-5d4e-4af6-bf59-bdad32729407
+
+Name: AZURE_TENANT_ID
+Value: 93f33571-550f-43cf-b09f-cd331338d086
+
+Name: TEAMS_WEBHOOK_URL
+Value: <Your Teams Webhook URL>
+
+Federated Credentials Configured:
+-----------------------------------------------------------------
+1. Branch: master
+   Subject: repo:AlbertoLacambra/DXC_PoC_Nirvana:ref:refs/heads/master
+
+2. Pull Requests
+   Subject: repo:AlbertoLacambra/DXC_PoC_Nirvana:pull_request
+
+3. Environment: hub
+   Subject: repo:AlbertoLacambra/DXC_PoC_Nirvana:environment:hub
+
+GitHub Repository:
+-----------------------------------------------------------------
+https://github.com/AlbertoLacambra/DXC_PoC_Nirvana/settings/secrets/actions
+
+Azure Portal:
+-----------------------------------------------------------------
+https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/f704d3ce-5d4e-4af6-bf59-bdad32729407
+
+=================================================================
