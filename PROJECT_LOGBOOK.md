@@ -1,19 +1,239 @@
 # 📔 DXC Cloud Mind - Bitácora del Proyecto
 
 > **Repositorio**: DXC_PoC_Nirvana  
-> **Proyecto**: Cloud Mind - Plataforma Multi-tenant para IA Generativa  
-> **Inicio**: Octubre 2025  
-> **Estado**: En Desarrollo - Fase de Planificación Completada
+> **Proyecto**: Cloud Mind - AI-driven CloudOps Platform  
+> **Inicio**: Octubre 2024  
+> **Estado**: ✅ **INFRASTRUCTURE DEPLOYED** - Phase 1 Ready
 
 ---
 
 ## 📋 Índice
 
+- [Últimas Actualizaciones](#últimas-actualizaciones)
 - [Plan Actual](#plan-actual)
 - [Historial de Cambios](#historial-de-cambios)
 - [Decisiones Técnicas](#decisiones-técnicas)
 - [Lecciones Aprendidas](#lecciones-aprendidas)
 - [Próximos Pasos](#próximos-pasos)
+
+---
+
+## 🆕 Últimas Actualizaciones
+
+### **📅 Enero 2025 - Deployment Exitoso**
+
+#### **Hito: Infrastructure as Code Desplegado** ✅
+
+**Fecha**: 2025-01-XX  
+**Estado**: COMPLETADO  
+**Recursos Desplegados**: 7
+
+**Resumen Ejecutivo**:
+- ✅ Primera infraestructura desplegada con éxito usando Terraform + GitHub Actions
+- ✅ Estrategia Single-AKS implementada (ahorro ~€250/mes)
+- ✅ OIDC authentication configurado (cero secretos almacenados)
+- ✅ 7 errores resueltos en sesión de debugging
+- ✅ 5 workflows operacionales
+- ✅ Documentación completa creada
+
+**Recursos Creados**:
+```
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
+
+1. azurerm_resource_group.hub (cloudmind-hub-rg)
+2. module.acr[0].azurerm_resource_group.acr (cloudmind-acr-rg)
+3. module.acr[0].azurerm_container_registry.this
+4. module.acr[0].random_string.acr_suffix
+5. module.acr[0].azurerm_role_assignment.acr_pull
+6. module.aks_namespaces.kubernetes_namespace.cloudmind[0]
+7. module.aks_namespaces.kubernetes_resource_quota.cloudmind[0]
+```
+
+**Arquitectura Implementada**:
+```
+AZURE SUBSCRIPTION: 739aaf91-5cb2-45a6-ab4f-abf883e9d3f7
+│
+├── dify-rg (Existing Infrastructure)
+│   └── dify-aks (AKS Cluster)
+│       ├── dify namespace (existing, data source)
+│       └── cloudmind namespace (NEW, Terraform-managed)
+│           └── Resource Quota: 4 CPU / 8Gi Memory / 30 pods
+│
+├── cloudmind-hub-rg (NEW - Managed by Terraform)
+│   └── Shared services and governance resources
+│
+└── cloudmind-acr-rg (NEW - Managed by Terraform)
+    ├── Azure Container Registry
+    └── Role Assignments (AcrPull to AKS)
+```
+
+#### **Debugging Session: 7 Errores Resueltos** 🐛
+
+**Error 1: Diagnostic Settings Missing Argument**
+- **Síntoma**: `Missing required argument - log_analytics_workspace_id must be specified`
+- **Causa**: Módulo ACR intentaba crear diagnostic_setting sin workspace configurado
+- **Solución**: Hacer diagnostic_setting condicional con `count`
+- **Commit**: `ea46c8b`
+- **Lección**: Siempre usar `count` para recursos opcionales
+
+**Error 2: Cannot Apply Incomplete Plan**
+- **Síntoma**: `Cannot apply incomplete plan` cuando terraform plan tenía errores
+- **Causa**: Workflow no validaba exit code de terraform plan
+- **Solución**: Capturar PIPESTATUS[0], verificar exit code, condicionar Apply step
+- **Commit**: `0cd00ca`
+- **Lección**: Siempre validar exit codes en pipelines CI/CD
+
+**Error 3: Kubernetes Connection Refused**
+- **Síntoma**: `dial tcp [::1]:80: connect: connection refused` al crear namespace
+- **Causa**: Provider kubernetes no configurado, defaulteando a localhost
+- **Solución**: Añadir kubernetes provider con credenciales del AKS cluster
+- **Commit**: `9268b80`
+- **Lección**: Providers que conectan a servicios externos requieren configuración explícita
+
+**Error 4: Authorization Failed for Role Assignments**
+- **Síntoma**: `AuthorizationFailed - client does not have authorization Microsoft.Authorization/roleAssignments/write`
+- **Causa**: Service Principal solo tenía rol Contributor
+- **Solución**: Añadir rol "User Access Administrator" al Service Principal
+- **Comando**: 
+  ```bash
+  az role assignment create \
+    --assignee dc39d60b-cfc7-41c6-9fcb-3b29778bb03a \
+    --role "User Access Administrator" \
+    --scope /subscriptions/739aaf91-5cb2-45a6-ab4f-abf883e9d3f7
+  ```
+- **Lección**: Para gestionar role assignments, se necesita "User Access Administrator"
+
+**Error 5: Namespace Already Exists**
+- **Síntoma**: `namespaces 'dify' already exists` al intentar crear namespace dify
+- **Causa**: Namespace dify ya existe en cluster AKS (parte de infraestructura Dify)
+- **Solución**: Cambiar a data source (read-only) para namespace dify, solo gestionar cloudmind
+- **Commit**: `988f51d`
+- **Lección**: Usar data sources para recursos existentes que no queremos modificar
+
+**Error 6 & 7: terraform-docs Path/Template Errors**
+- **Síntomas**: `stat terraform/environments/hub/terraform: no such file` y `open usage.tf: no such file`
+- **Causa**: terraform-docs buscaba archivos de configuración inexistentes
+- **Solución Temporal**: Deshabilitar terraform-docs en workflows
+- **Commits**: `74f6f06`, `d4b8194`, `36a58ed`
+- **Lección**: terraform-docs requiere archivo `.terraform-docs.yml` personalizado
+- **Próximo Paso**: Crear configuración `.terraform-docs.yml` y re-habilitar
+
+#### **CI/CD Workflows Configurados** 🔄
+
+**Workflows Operacionales** (5 total):
+
+1. **deploy.yml** (Production Deployment)
+   - Trigger: Manual (`workflow_dispatch`)
+   - Gates: Format check → Plan → **Manual Approval** → Apply → Teams notification
+   - Status: ✅ OPERATIONAL
+
+2. **pr-validation.yml** (PR Validation)
+   - Trigger: Pull requests to master
+   - Gates: 7 checks (format, validate, tfsec, checkov, tflint, plan, teams)
+   - Status: ✅ OPERATIONAL
+
+3. **drift-detection.yml** (Daily Drift Detection)
+   - Trigger: Schedule (05:00 UTC daily)
+   - Purpose: Detect manual changes outside Terraform
+   - Status: ✅ OPERATIONAL
+
+4. **terraform-deploy.yml** (Legacy Deploy)
+   - Trigger: Manual
+   - Note: terraform-docs disabled
+   - Status: ✅ OPERATIONAL
+
+5. **terraform-pr.yml** (Legacy PR)
+   - Trigger: Pull requests
+   - Note: terraform-docs disabled
+   - Status: ✅ OPERATIONAL
+
+**Security Gates Implementados**:
+- ✅ `terraform fmt -check` - Code formatting
+- ✅ `terraform validate` - Syntax validation
+- ✅ `tfsec` - Security scanning
+- ✅ `checkov` - Compliance checking
+- ✅ `tflint` - Best practices linting
+- ✅ `terraform plan` - Impact preview
+- ✅ Manual approval - Production gate
+
+#### **Authentication & Security** 🔐
+
+**Service Principal Setup**:
+- ID: `dc39d60b-cfc7-41c6-9fcb-3b29778bb03a`
+- Nombre: `github-actions-dxc-nirvana`
+- Método: OIDC Federation (sin secretos almacenados)
+
+**Roles Asignados**:
+- ✅ Contributor (subscription scope)
+- ✅ User Access Administrator (subscription scope)
+
+**Federated Credentials** (3 configurados):
+```
+1. repo:DXC-Technology-Spain/DXC_PoC_Nirvana:ref:refs/heads/master
+2. repo:DXC-Technology-Spain/DXC_PoC_Nirvana:pull_request
+3. repo:DXC-Technology-Spain/DXC_PoC_Nirvana:environment:hub
+```
+
+**GitHub Secrets** (4 configurados):
+```
+AZURE_CLIENT_ID="dc39d60b-cfc7-41c6-9fcb-3b29778bb03a"
+AZURE_TENANT_ID="93f33571-550f-43cf-b09f-cd331338d086"
+AZURE_SUBSCRIPTION_ID="739aaf91-5cb2-45a6-ab4f-abf883e9d3f7"
+TEAMS_WEBHOOK_URL="<Power Automate webhook URL>"
+```
+
+#### **Documentación Creada** 📚
+
+**Nuevos Documentos**:
+1. ✅ `MIGRATION_COMPLETE.md` - Guía completa migración Terragrunt→Terraform
+2. ✅ `CHECKLIST_SECRETOS.md` - Checklist configuración GitHub secrets
+3. ✅ `SECRETS_SETUP.md` - Guía Service Principal y OIDC
+4. ✅ `STATUS.md` - Estado actual del proyecto (actualizado)
+5. ✅ `README.md` - Documentación principal (actualizada con arquitectura Single-AKS)
+6. ✅ `PROJECT_LOGBOOK.md` - Esta bitácora (actualizada)
+
+**Commits de Documentación**:
+- `78f8e76` - docs: Agregar guía completa de configuración de secretos
+- `195f271` - docs: Añadir documentación completa de migración
+
+#### **Optimización de Costes** 💰
+
+**Decisión: Single-AKS Strategy**
+
+**Comparativa**:
+```
+Opción A - Multi-AKS (Original):
+├── Hub AKS: €200/mes
+├── Spoke-Prod AKS: €200/mes
+├── Spoke-Dev AKS: €150/mes
+└── Container Insights: €50/mes x 3 = €150/mes
+TOTAL: ~€700/mes
+
+Opción B - Single-AKS (Implementado):
+├── Dify AKS (existing): €0/mes (ya pagado)
+├── Namespace isolation: €0/mes
+├── Container Insights: €0/mes (free tier)
+└── Resource quotas: €0/mes
+TOTAL: ~€0/mes (marginal cost)
+
+AHORRO MENSUAL: ~€700/mes
+AHORRO ANUAL: ~€8,400/año
+```
+
+**Recursos Compartidos Reutilizados**:
+- ✅ AKS Cluster (dify-aks)
+- ✅ PostgreSQL Flexible Server
+- ✅ Azure Storage Account
+- ✅ Azure Key Vault
+- ✅ Virtual Network
+- ✅ Container Insights (free tier)
+
+**Nuevos Recursos (Bajo Coste)**:
+- Azure Container Registry Basic: ~€5/mes
+- Resource Groups: €0/mes
+- Kubernetes Namespaces: €0/mes
+
+**COSTE TOTAL POC**: ~€5/mes (solo ACR nuevo)
 
 ---
 

@@ -1,0 +1,52 @@
+name: 📚 Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/gh-pages.yml'
+  
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: 🚀 Deploy Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install mkdocs-material
+          pip install mkdocs-minify-plugin
+          pip install mkdocs-git-revision-date-localized-plugin
+          pip install pymdown-extensions
+          pip install mkdocs-mermaid2-plugin
+
+      - name: 🏗️ Build Documentation
+        run: mkdocs build --strict
+
+      - name: 🚀 Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force --clean --verbose
+
+      - name: ✅ Deployment Complete
+        run: |
+          echo "✅ Documentation deployed to GitHub Pages"
+          echo "🔗 URL: https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/"
