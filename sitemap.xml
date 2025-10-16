@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/ARCHITECTURE_V2/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/OPTIMIZATION_PROPOSAL/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/status/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/01-hub-spoke-design/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/02-technology-stack/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/quick-start/</loc>
+         <lastmod>2025-10-16</lastmod>
+    </url>
+</urlset>
