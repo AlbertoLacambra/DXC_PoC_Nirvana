@@ -173,12 +173,13 @@ jobs:
         if: steps.apply.outputs.status == 'success'
         uses: terraform-docs/gh-actions@v1.0.0
         with:
-          working-dir: terraform/environments/hub
+          working-dir: .
           output-file: README.md
           output-method: inject
           git-push: true
           git-commit-message: "docs(terraform): Auto-update documentation after deploy [skip ci]"
-          recursive: false
+          recursive: true
+          recursive-path: terraform/environments/hub
 
       - name: 📝 Generate Infrastructure Report
         if: steps.apply.outputs.status == 'success'

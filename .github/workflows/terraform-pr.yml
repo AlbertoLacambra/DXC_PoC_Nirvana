@@ -194,12 +194,12 @@ jobs:
         id: terraform_docs
         uses: terraform-docs/gh-actions@v1.0.0
         with:
-          working-dir: terraform/environments/hub
+          working-dir: .
           output-file: README.md
           output-method: inject
           git-push: false
           recursive: true
-          recursive-path: modules,environments
+          recursive-path: terraform/environments/hub
 
       - name: Commit Updated Docs
         if: steps.terraform_docs.outputs.num_changed > 0
