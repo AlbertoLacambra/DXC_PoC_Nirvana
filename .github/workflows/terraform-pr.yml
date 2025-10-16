@@ -190,34 +190,37 @@ jobs:
       # ============================================
       # GATE 6: Documentation Generation (terraform-docs)
       # ============================================
-      - name: 📚 Generate Terraform Docs
-        id: terraform_docs
-        uses: terraform-docs/gh-actions@v1.0.0
-        with:
-          working-dir: .
-          output-file: README.md
-          output-method: inject
-          git-push: false
-          recursive: true
-          recursive-path: terraform/environments/hub
+      # NOTE: terraform-docs temporarily disabled for PoC
+      # Re-enable after creating .terraform-docs.yml config file
+      # - name: 📚 Generate Terraform Docs
+      #   id: terraform_docs
+      #   uses: terraform-docs/gh-actions@v1.0.0
+      #   with:
+      #     working-dir: .
+      #     output-file: README.md
+      #     output-method: inject
+      #     git-push: false
+      #     recursive: true
+      #     recursive-path: terraform/environments/hub
 
-      - name: Commit Updated Docs
-        if: steps.terraform_docs.outputs.num_changed > 0
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add terraform/**/README.md
-          git commit -m "docs(terraform): Auto-update documentation [skip ci]"
-          git push
+      # NOTE: These steps disabled because terraform-docs is disabled
+      # - name: Commit Updated Docs
+      #   if: steps.terraform_docs.outputs.num_changed > 0
+      #   run: |
+      #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+      #     git config --local user.name "github-actions[bot]"
+      #     git add terraform/**/README.md
+      #     git commit -m "docs(terraform): Auto-update documentation [skip ci]"
+      #     git push
 
-      - name: terraform-docs Summary
-        run: |
-          echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.terraform_docs.outputs.num_changed }}" -gt 0 ]; then
-            echo "✅ Documentation updated (${{ steps.terraform_docs.outputs.num_changed }} files)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "ℹ️ Documentation up to date" >> $GITHUB_STEP_SUMMARY
-          fi
+      # - name: terraform-docs Summary
+      #   run: |
+      #     echo "### 📚 Documentation" >> $GITHUB_STEP_SUMMARY
+      #     if [ "${{ steps.terraform_docs.outputs.num_changed }}" -gt 0 ]; then
+      #       echo "✅ Documentation updated (${{ steps.terraform_docs.outputs.num_changed }} files)" >> $GITHUB_STEP_SUMMARY
+      #     else
+      #       echo "ℹ️ Documentation up to date" >> $GITHUB_STEP_SUMMARY
+      #     fi
 
       # ============================================
       # GATE 7: Terraform Plan Preview

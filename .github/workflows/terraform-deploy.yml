@@ -169,17 +169,19 @@ jobs:
       # ============================================
       # Post-Deploy Documentation
       # ============================================
-      - name: 📚 Update Documentation (terraform-docs)
-        if: steps.apply.outputs.status == 'success'
-        uses: terraform-docs/gh-actions@v1.0.0
-        with:
-          working-dir: .
-          output-file: README.md
-          output-method: inject
-          git-push: true
-          git-commit-message: "docs(terraform): Auto-update documentation after deploy [skip ci]"
-          recursive: true
-          recursive-path: terraform/environments/hub
+      # NOTE: terraform-docs temporarily disabled for PoC
+      # Re-enable after creating .terraform-docs.yml config file
+      # - name: 📚 Update Documentation (terraform-docs)
+      #   if: steps.apply.outputs.status == 'success'
+      #   uses: terraform-docs/gh-actions@v1.0.0
+      #   with:
+      #     working-dir: .
+      #     output-file: README.md
+      #     output-method: inject
+      #     git-push: true
+      #     git-commit-message: "docs(terraform): Auto-update documentation after deploy [skip ci]"
+      #     recursive: true
+      #     recursive-path: terraform/environments/hub
 
       - name: 📝 Generate Infrastructure Report
         if: steps.apply.outputs.status == 'success'
