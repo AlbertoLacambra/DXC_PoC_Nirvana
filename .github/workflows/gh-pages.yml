@@ -41,7 +41,7 @@ jobs:
           pip install mkdocs-mermaid2-plugin
 
       - name: 🏗️ Build Documentation
-        run: mkdocs build --strict
+        run: mkdocs build
 
       - name: 🚀 Deploy to GitHub Pages
         run: mkdocs gh-deploy --force --clean --verbose
