@@ -117,12 +117,19 @@ nav:
     - Bienvenida: index.md
     - Estado del Proyecto: status.md
     - Plan de Negocio: business-plan.md
+    - 🚀 Visión del Producto: PRODUCT_VISION.md
   
   - Arquitectura:
     - Visión General: architecture/overview.md
     - Single-AKS Strategy: architecture/single-aks.md
     - Recursos Desplegados: architecture/deployed-resources.md
+    - Sistema RAG + IA: architecture/ai-rag-system.md
     - Decisiones Técnicas: architecture/adr.md
+  
+  - Casos de Uso:
+    - Introducción: use-cases/README.md
+    - Vibe Coding:
+      - UC-101 Crear Proyecto FastAPI: use-cases/vibe-coding/UC-101-create-fastapi-project.md
   
   - CI/CD:
     - Workflows: cicd/workflows.md
