@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cloud Control Center",
-  description: "Plataforma unificada de desarrollo Cloud impulsada por IA",
+  title: "DXC Cloud Mind - Nirvana",
+  description: "Plataforma unificada de desarrollo Cloud impulsada por IA | Developed by Alberto Lacambra",
 };
 
 export default function RootLayout({

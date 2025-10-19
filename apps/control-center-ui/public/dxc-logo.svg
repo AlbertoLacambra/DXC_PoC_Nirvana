@@ -1,0 +1,22 @@
+<svg width="200" height="60" xmlns="http://www.w3.org/2000/svg">
+  <!-- DXC Logo Placeholder -->
+  <defs>
+    <linearGradient id="dxcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a4a4a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="60" fill="url(#dxcGradient)" rx="4"/>
+  
+  <!-- DXC Text -->
+  <text x="20" y="38" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">
+    DXC
+  </text>
+  
+  <!-- Technology Text -->
+  <text x="100" y="38" font-family="Arial, sans-serif" font-size="16" fill="#cccccc">
+    Technology
+  </text>
+</svg>
