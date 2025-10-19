@@ -1,0 +1,72 @@
+name: Deploy Control Center UI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/control-center-ui/**'
+  workflow_dispatch:
+
+env:
+  AZURE_SUBSCRIPTION_ID: 739aaf91-5cb2-45a6-ab4f-abf883e9d3f7
+  AKS_RESOURCE_GROUP: dify-rg
+  AKS_CLUSTER_NAME: dify-aks
+  ACR_NAME: dxccloudmindx0sa6l
+  IMAGE_NAME: control-center-ui
+  K8S_NAMESPACE: cloudmind
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Log in to ACR
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./apps/control-center-ui
+        push: true
+        tags: |
+          ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        cache-from: type=registry,ref=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:buildcache
+        cache-to: type=registry,ref=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+    - name: Get AKS credentials
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }} \
+          --overwrite-existing
+
+    - name: Deploy to AKS
+      run: |
+        kubectl apply -f apps/control-center-ui/kubernetes/deployment.yaml
+        kubectl apply -f apps/control-center-ui/kubernetes/service.yaml
+        kubectl apply -f apps/control-center-ui/kubernetes/ingress.yaml
+        
+        # Wait for rollout
+        kubectl rollout status deployment/control-center-ui -n ${{ env.K8S_NAMESPACE }} --timeout=5m
+        
+        # Show deployment status
+        kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=control-center-ui
+
+    - name: Verify deployment
+      run: |
+        echo "Deployment completed successfully!"
+        kubectl get ingress -n ${{ env.K8S_NAMESPACE }} control-center-ui
