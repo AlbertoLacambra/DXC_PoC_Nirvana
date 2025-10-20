@@ -323,9 +323,9 @@ Requires code update and owner approval.`;
 
       console.log('📝 Creando Pull Request...');
 
-      // Timeout de 30 segundos para evitar colgarse indefinidamente
+      // Timeout de 60 segundos (gh pr create puede tardar)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const prResponse = await fetch('/api/drift/apply', {
         method: 'POST',
@@ -376,9 +376,15 @@ Requires code update and owner approval.`;
       
       let errorMsg = err.message;
       if (err.name === 'AbortError') {
-        errorMsg = 'Timeout: La creación del PR tardó más de 30 segundos.\n' +
-                   'Verifica si el PR se creó en GitHub (gh pr list).\n' +
-                   'Si no, revisa los logs del backend.';
+        errorMsg = 'Timeout: La creación del PR tardó más de 60 segundos.\n\n' +
+                   '⚠️ POSIBLE CAUSA:\n' +
+                   '- El comando "gh pr create" se quedó colgado\n' +
+                   '- Puede haber problemas de autenticación de GitHub\n' +
+                   '- El body del PR es demasiado largo\n\n' +
+                   '🔍 VERIFICA:\n' +
+                   '1. Revisa si el PR se creó: gh pr list\n' +
+                   '2. Revisa los logs del backend (terminal)\n' +
+                   '3. Prueba crear el PR manualmente desde la rama';
       }
       
       alert(

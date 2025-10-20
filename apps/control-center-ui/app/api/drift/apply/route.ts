@@ -164,9 +164,11 @@ export async function POST(request: NextRequest) {
         
         // 4. Crear archivo temporal con el body del PR (evita problemas con textos largos)
         console.log('📄 Creando archivo temporal del PR...');
-        const prBodyFile = '.pr-body-temp.md';  // Usar ruta relativa en el repo
-        const escapedPrDesc = prDescription.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-        await executeCommand(wslRepoPath, `echo "${escapedPrDesc}" > '${prBodyFile}'`);
+        const prBodyFile = '.pr-body-temp.md';
+        const prBodyPath = path.join(repoPath, prBodyFile);
+        
+        // Usar fs.writeFileSync para evitar problemas con echo en WSL
+        fs.writeFileSync(prBodyPath, prDescription, 'utf8');
         console.log('✅ Archivo temporal creado');
         
         // 5. Crear Pull Request usando GitHub CLI con archivo
@@ -179,7 +181,8 @@ export async function POST(request: NextRequest) {
         
         // Limpiar archivo temporal
         try {
-          await executeCommand(wslRepoPath, `rm -f '${prBodyFile}'`);
+          fs.unlinkSync(prBodyPath);
+          console.log('✅ Archivo temporal eliminado');
         } catch (cleanupErr) {
           console.warn('⚠️ No se pudo eliminar archivo temporal:', cleanupErr);
         }
