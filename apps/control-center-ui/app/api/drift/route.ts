@@ -56,6 +56,7 @@ export async function GET() {
         .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
       
       // Use absolute paths for both terraform and terragrunt
+      // Set PATH explicitly to include terraform's directory
       const terraformPath = '/home/alacambra/bin/terraform';
       const terragruntPath = '/usr/local/bin/terragrunt';
       
@@ -102,6 +103,13 @@ export async function GET() {
     // Parsear el output de terraform plan
     const stats = parseTerraformPlan(planOutput);
     const driftedResources = extractDriftedResources(planOutput);
+
+    console.log('=== DRIFT API DEBUG ===');
+    console.log('Has changes:', hasChanges);
+    console.log('Stats:', JSON.stringify(stats, null, 2));
+    console.log('Drifted resources count:', driftedResources.length);
+    console.log('Plan output length:', planOutput.length);
+    console.log('First 500 chars:', planOutput.substring(0, 500));
 
     return NextResponse.json({
       success: true,
@@ -165,8 +173,8 @@ function extractDriftedResources(output: string): any[] {
     const line = lines[i];
     
     // Detectar inicio de un recurso con cambios
-    // Ejemplo: "# azurerm_kubernetes_cluster.dify_aks will be updated in-place"
-    const resourceMatch = line.match(/^#\s+(\S+)\s+will\s+be\s+(.+)$/);
+    // Ejemplo: "  # azurerm_resource_group.hub will be updated in-place"
+    const resourceMatch = line.match(/^\s*#\s+(\S+)\s+will\s+be\s+(.+)$/);
     
     if (resourceMatch) {
       if (currentResource) {
@@ -174,7 +182,9 @@ function extractDriftedResources(output: string): any[] {
       }
       
       const [, resourceAddress, action] = resourceMatch;
-      const [resourceType, resourceName] = resourceAddress.split('.');
+      const parts = resourceAddress.split('.');
+      const resourceType = parts.slice(0, -1).join('.'); // Puede tener múltiples puntos
+      const resourceName = parts[parts.length - 1];
       
       let severity = 'info';
       if (action.includes('destroyed')) severity = 'critical';
@@ -183,19 +193,21 @@ function extractDriftedResources(output: string): any[] {
       else if (action.includes('created')) severity = 'info';
       
       currentResource = {
+        address: resourceAddress,
         name: resourceName || resourceAddress,
         type: resourceType,
-        drift: action,
+        action: action,
         severity,
-        details: [],
+        changes: [],
       };
     }
     
     // Capturar detalles de cambios (líneas con ~ o + o -)
-    if (currentResource && (line.includes('~') || line.includes('+') || line.includes('-'))) {
-      const cleanLine = line.trim().replace(/^[~+-]\s+/, '');
-      if (cleanLine && !cleanLine.startsWith('#')) {
-        currentResource.details.push(cleanLine);
+    if (currentResource && line.trim().match(/^[~+\-]/)) {
+      const cleanLine = line.trim();
+      // Capturar cambios como "~ tags = { ... }" o "+ DriftTest = "active""
+      if (cleanLine && !cleanLine.startsWith('#') && cleanLine.length < 200) {
+        currentResource.changes.push(cleanLine);
       }
     }
   }
@@ -204,11 +216,15 @@ function extractDriftedResources(output: string): any[] {
     resources.push(currentResource);
   }
 
+  console.log('Extracted resources:', resources);
+
   // Formatear para el frontend
-  return resources.slice(0, 10).map(r => ({
+  return resources.map(r => ({
+    address: r.address,
     name: r.name,
     type: r.type,
-    drift: r.details.slice(0, 3).join(', ') || r.drift,
+    action: r.action,
     severity: r.severity,
+    changes: r.changes.slice(0, 5), // Limitar a 5 cambios más relevantes
   }));
 }
