@@ -566,44 +566,339 @@ function CostAnalysisTab() {
 // OPTIMIZATION TAB - FinOps Toolkit
 // ============================================
 function OptimizationTab() {
+  const [optimizerData, setOptimizerData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchOptimizerData() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/finops?optimizer=true');
+        const data = await response.json();
+        
+        if (data.success && data.optimizer) {
+          setOptimizerData(data.optimizer);
+        } else {
+          setError(data.error || 'No optimizer data available');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch optimizer data');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchOptimizerData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-600">⏳ Analizando recursos y generando recomendaciones...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800">❌ Error: {error}</p>
+      </div>
+    );
+  }
+
+  if (!optimizerData) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <p className="text-gray-600">No hay datos de optimizer disponibles</p>
+      </div>
+    );
+  }
+
+  const summary = optimizerData.summary;
+
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-md p-8">
-        <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <span className="text-3xl">⚡</span>
-          Cost Optimization Recommendations
-        </h3>
-        <p className="text-gray-600 mb-6">
-          Powered by Microsoft FinOps Toolkit - Recommendations Engine
+      {/* Header con total savings */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-lg p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-3xl font-bold mb-2">
+              €{summary.totalMonthlySavings.toFixed(2)}<span className="text-xl">/mes</span>
+            </h3>
+            <p className="text-green-100 text-lg">
+              Ahorros potenciales identificados
+            </p>
+            <p className="text-green-200 text-sm mt-1">
+              €{summary.totalAnnualSavings.toFixed(2)} anuales
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-5xl mb-2">⚡</div>
+            <div className="bg-green-400 text-green-900 px-4 py-2 rounded-lg font-bold">
+              Score: {summary.optimizationScore}/100
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Resumen de recursos analizados */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <div className="text-2xl font-bold text-gray-800">{summary.resourcesAnalyzed}</div>
+          <div className="text-sm text-gray-600">Recursos Analizados</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+          <div className="text-2xl font-bold text-orange-600">{summary.underutilizedCount}</div>
+          <div className="text-sm text-gray-600">Infrautilizados (&lt;20%)</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+          <div className="text-2xl font-bold text-green-600">{summary.optimalCount}</div>
+          <div className="text-sm text-gray-600">Óptimos (20-90%)</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+          <div className="text-2xl font-bold text-red-600">{summary.overutilizedCount}</div>
+          <div className="text-sm text-gray-600">Sobreutilizados (&gt;90%)</div>
+        </div>
+      </div>
+
+      {/* Savings breakdown */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h4 className="text-lg font-semibold text-gray-800 mb-4">Desglose de ahorros</h4>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎯</span>
+              <div>
+                <div className="font-semibold text-gray-800">Right-Sizing</div>
+                <div className="text-sm text-gray-600">{summary.rightsizingRecommendations} recomendaciones</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-green-600">
+                €{summary.savingsFromRightSizing.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500">/mes</div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">💎</span>
+              <div>
+                <div className="font-semibold text-gray-800">Reserved Instances</div>
+                <div className="text-sm text-gray-600">{summary.reservedInstanceRecommendations} oportunidades</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-blue-600">
+                €{summary.savingsFromReservedInstances.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500">/mes</div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚡</span>
+              <div>
+                <div className="font-semibold text-gray-800">Spot Instances</div>
+                <div className="text-sm text-gray-600">{summary.spotInstanceOpportunities} workloads elegibles</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-purple-600">
+                €{summary.savingsFromSpotInstances.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500">/mes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right-Sizing Recommendations */}
+      {optimizerData.rightsizing && optimizerData.rightsizing.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>🎯</span> Recomendaciones de Right-Sizing
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Recurso</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">SKU Actual</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Recomendado</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Utilización</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-700">Ahorro/Mes</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Prioridad</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {optimizerData.rightsizing.slice(0, 10).map((rec: any) => (
+                  <tr key={rec.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-800">{rec.resourceName}</div>
+                      <div className="text-xs text-gray-500">{rec.resourceGroup}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">
+                        {rec.currentSku.name}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-mono ${
+                        rec.recommendationType === 'downsize' ? 'bg-green-100 text-green-800' :
+                        rec.recommendationType === 'upsize' ? 'bg-orange-100 text-orange-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {rec.recommendationType === 'shutdown' ? 'SHUTDOWN' : rec.recommendedSku.name}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs">
+                        <div>CPU: {rec.currentUtilization.cpuAverage.toFixed(1)}%</div>
+                        <div>RAM: {rec.currentUtilization.memoryAverage.toFixed(1)}%</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-semibold text-green-600">
+                        €{Math.abs(rec.monthlySavings).toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        rec.priority >= 8 ? 'bg-red-100 text-red-800' :
+                        rec.priority >= 5 ? 'bg-orange-100 text-orange-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {rec.priority}/10
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {optimizerData.rightsizing.length > 10 && (
+            <p className="text-sm text-gray-500 mt-4 text-center">
+              Mostrando 10 de {optimizerData.rightsizing.length} recomendaciones
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Reserved Instance Recommendations */}
+      {optimizerData.reservedInstances && optimizerData.reservedInstances.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>💎</span> Oportunidades de Reserved Instances
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">VM Size</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Location</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Cantidad</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Término</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-700">Ahorro/Mes</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">% Ahorro</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {optimizerData.reservedInstances.slice(0, 5).map((rec: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs">{rec.vmSize}</td>
+                    <td className="px-4 py-3 text-xs">{rec.location}</td>
+                    <td className="px-4 py-3 text-center font-semibold">{rec.quantity}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        rec.term === '3year' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {rec.term === '3year' ? '3 años' : '1 año'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-blue-600">
+                      €{rec.monthlySavings.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-green-600 font-bold">{rec.savingsPercentage}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Spot Instance Eligibility */}
+      {optimizerData.spotInstances && optimizerData.spotInstances.filter((s: any) => s.isEligible).length > 0 && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span>⚡</span> Workloads elegibles para Spot Instances
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Recurso</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Workload Type</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Tolerancia</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-700">Ahorro/Mes</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Riesgo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {optimizerData.spotInstances.filter((s: any) => s.isEligible).slice(0, 10).map((spot: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-800">{spot.resourceName}</div>
+                      <div className="text-xs text-gray-500 font-mono">{spot.currentSku}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-semibold">
+                        {spot.workloadType}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        spot.interruptionTolerance === 'high' ? 'bg-green-100 text-green-800' :
+                        spot.interruptionTolerance === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {spot.interruptionTolerance}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-purple-600">
+                      €{spot.monthlySavings.toFixed(2)}
+                      <div className="text-xs text-gray-500">({spot.savingsPercentage}%)</div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        spot.riskLevel === 'low' ? 'bg-green-100 text-green-800' :
+                        spot.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {spot.riskLevel}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Footer note */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>🧪 DEMO DATA:</strong> Estos datos son simulados para propósitos de demostración.
+          En producción, se integrarían directamente con Azure Monitor API y Azure Cost Management para análisis en tiempo real.
         </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-semibold text-green-900 mb-2">🎯 Right-Sizing</h4>
-            <p className="text-sm text-green-700">
-              Análisis de utilización y recomendaciones de SKU óptimas
-            </p>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 mb-2">💎 Reserved Instances</h4>
-            <p className="text-sm text-blue-700">
-              Oportunidades de ahorro con compromisos a 1-3 años
-            </p>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <h4 className="font-semibold text-purple-900 mb-2">⚡ Spot Instances</h4>
-            <p className="text-sm text-purple-700">
-              Savings hasta 90% para workloads tolerantes a interrupciones
-            </p>
-          </div>
-        </div>
-
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">🚧 Azure Monitor integration en desarrollo</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Próximamente: Detección automática de recursos infrautilizados y recomendaciones personalizadas
-          </p>
-        </div>
       </div>
     </div>
   );
