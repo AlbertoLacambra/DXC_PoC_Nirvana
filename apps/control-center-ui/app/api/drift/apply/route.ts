@@ -69,6 +69,67 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (action === 'import-manual-changes') {
+      // NUEVO: Importar cambios manuales de Azure al código
+      const { driftedResources } = body;
+      
+      const workingPath = process.env.TERRAFORM_PATH || 'c:\\PROYECTS\\DXC_PoC_Nirvana\\terraform\\hub';
+      const repoPath = 'c:\\PROYECTS\\DXC_PoC_Nirvana';
+      
+      // Convertir a paths WSL
+      const wslWorkingPath = workingPath
+        .replace(/\\/g, '/')
+        .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
+      
+      const wslRepoPath = repoPath
+        .replace(/\\/g, '/')
+        .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
+      
+      try {
+        console.log('🔄 Ejecutando Terraform Refresh para capturar cambios manuales...');
+        
+        // Configurar PATH para Terraform/Terragrunt
+        const pathSetup = 'export PATH=/home/alacambra/bin:/usr/local/bin:/usr/bin:/bin';
+        const terragruntPath = '/usr/local/bin/terragrunt';
+        
+        // 1. Ejecutar terraform refresh para actualizar el state
+        const refreshCommand = `${pathSetup} && cd '${wslWorkingPath}' && ${terragruntPath} refresh -no-color`;
+        const refreshOutput = await executeCommand(wslRepoPath, refreshCommand);
+        
+        console.log('✅ Terraform Refresh completado');
+        
+        // 2. Obtener el estado actual con terraform show
+        const showCommand = `${pathSetup} && cd '${wslWorkingPath}' && ${terragruntPath} show -no-color`;
+        const stateOutput = await executeCommand(wslRepoPath, showCommand);
+        
+        // 3. Generar archivo de documentación con los cambios
+        const changesDoc = generateManualChangesDoc(driftedResources, stateOutput);
+        
+        // 4. Crear archivo MANUAL_CHANGES.md en el repo
+        const docPath = `${wslRepoPath}/MANUAL_CHANGES_${Date.now()}.md`;
+        const createDocCommand = `cat > '${docPath}' << 'EOFMARKER'\n${changesDoc}\nEOFMARKER`;
+        await executeCommand(wslRepoPath, createDocCommand);
+        
+        console.log('📄 Archivo de documentación creado');
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Cambios manuales capturados exitosamente',
+          refreshOutput: refreshOutput.substring(Math.max(0, refreshOutput.length - 500)),
+          stateOutput: stateOutput.substring(0, 1000),
+          changesDoc,
+        });
+        
+      } catch (error: any) {
+        console.error('❌ Error importando cambios manuales:', error);
+        return NextResponse.json({
+          success: false,
+          error: `Error al importar cambios: ${error.message}`,
+          details: error.stderr || error.stdout,
+        }, { status: 500 });
+      }
+    }
+
     if (action === 'create-pr') {
       // Crear Pull Request con las correcciones
       const { branchName, commitMessage, prTitle, prDescription } = body;
@@ -335,4 +396,138 @@ async function detectDriftType(driftedResources: any[]): Promise<{
       'Se recomienda revisión manual del plan de Terraform para determinar la causa del drift.',
     confidence: 'low',
   };
+}
+
+function generateManualChangesDoc(driftedResources: any[], stateOutput: string): string {
+  const timestamp = new Date().toLocaleString('es-ES');
+  
+  return `# 🔄 Cambios Manuales Detectados en Azure
+
+**Fecha de Detección:** ${timestamp}  
+**Recursos Modificados:** ${driftedResources.length}  
+**Origen:** Modificaciones realizadas manualmente en Azure Portal
+
+---
+
+## ⚠️ Contexto
+
+Este documento fue generado automáticamente por **DXC Cloud Mind - Nirvana Dashboard**.
+
+Se detectaron cambios en la infraestructura de Azure que **NO están reflejados en el código Terraform**. 
+Esto generalmente ocurre cuando:
+
+- 🚨 Un miembro del equipo de operaciones realiza cambios de emergencia en el portal
+- 🛠️ Se aplican hotfixes directamente en Azure durante una incidencia
+- 👤 Alguien modifica recursos manualmente sin actualizar el código IaC
+
+---
+
+## 📋 Recursos Modificados
+
+${driftedResources.map((resource: any, idx: number) => `
+### ${idx + 1}. ${resource.address || resource.name}
+
+**Tipo:** \`${resource.type}\`  
+**Acción:** ${resource.action}  
+**Severidad:** ${resource.severity}
+
+**Cambios Detectados:**
+\`\`\`hcl
+${resource.changes.join('\n')}
+\`\`\`
+`).join('\n---\n')}
+
+---
+
+## ✅ Pasos para Aprobar estos Cambios
+
+### 1️⃣ Revisar los Cambios
+
+Verifica que los cambios manuales sean:
+- ✓ Intencionales y necesarios
+- ✓ No introducen vulnerabilidades de seguridad
+- ✓ Cumplen con las políticas de la organización
+- ✓ Están documentados (ticket, incidencia, etc.)
+
+### 2️⃣ Actualizar el Código Terraform
+
+Para incorporar estos cambios al código, ejecuta:
+
+\`\`\`bash
+cd terraform/hub
+
+# Ver el estado actual
+terragrunt show
+
+# Actualizar el archivo main.tf con los cambios detectados
+# Ejemplo: Si se agregó un tag "ManualTest" = "true":
+vim main.tf
+
+# Agregar el nuevo tag al resource:
+tags = merge(var.tags, {
+  DriftTest  = "active"
+  LastUpdate = "2025-10-20"
+  Owner      = "DXC Cloud Team"
+  ManualTest = "true"  # <-- NUEVO: Agregado durante incidencia
+})
+\`\`\`
+
+### 3️⃣ Validar los Cambios
+
+\`\`\`bash
+# Verificar que el plan esté limpio
+terragrunt plan
+
+# Deberías ver: "No changes. Your infrastructure matches the configuration."
+\`\`\`
+
+### 4️⃣ Commitear y Push
+
+\`\`\`bash
+git add terraform/hub/main.tf
+git commit -m "feat: Import manual changes from Azure
+
+Changes made during incident response/hotfix.
+Documented in [TICKET-NUMBER]"
+
+git push
+\`\`\`
+
+---
+
+## 📊 Estado Actual de Terraform
+
+<details>
+<summary>Click para ver el output de terraform show (primeros 1000 caracteres)</summary>
+
+\`\`\`
+${stateOutput.substring(0, 1000)}
+${stateOutput.length > 1000 ? '\n... (truncado)\n' : ''}
+\`\`\`
+
+</details>
+
+---
+
+## 🔐 Política de IaC
+
+⚠️ **RECORDATORIO IMPORTANTE:**
+
+Los cambios manuales en Azure **deben ser excepcionales** y solo en casos de emergencia.
+
+**Proceso correcto:**
+1. 🎫 Crear ticket/issue documentando la necesidad del cambio
+2. 💻 Modificar el código Terraform en una rama feature
+3. 📝 Crear Pull Request con descripción detallada
+4. 👀 Revisión y aprobación del equipo
+5. ✅ Merge a master
+6. 🚀 Deploy con terragrunt apply
+
+**Este PR es para REGULARIZAR cambios ya realizados en emergencia.**
+
+---
+
+*Generado automáticamente por DXC Cloud Mind - Nirvana Dashboard*  
+*Terraform State actualizado con terragrunt refresh*
+`;
 }
