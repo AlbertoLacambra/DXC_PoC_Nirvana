@@ -50,11 +50,21 @@ export async function GET() {
         .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
       command = `cd '${workingDir}' && ${tfCommand} plan -detailed-exitcode -no-color`;
     } else {
-      // Running in Windows - use WSL
+      // Running in Windows - use WSL with absolute paths
       const wslPath = workingPath!
         .replace(/\\/g, '/')
         .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
-      command = `wsl bash -c "cd '${wslPath}' && ${tfCommand} plan -detailed-exitcode -no-color"`;
+      
+      // Use absolute paths for both terraform and terragrunt
+      const terraformPath = '/home/alacambra/bin/terraform';
+      const terragruntPath = '/usr/local/bin/terragrunt';
+      
+      // Set PATH without expanding Windows PATH - use a clean minimal PATH
+      const pathSetup = 'export PATH=/home/alacambra/bin:/usr/local/bin:/usr/bin:/bin';
+      
+      const tfAbsolutePath = tfCommand === 'terragrunt' ? terragruntPath : terraformPath;
+      
+      command = `wsl bash -c "${pathSetup} && cd '${wslPath}' && ${tfAbsolutePath} plan -detailed-exitcode -no-color"`;
     }
 
     console.log('Ejecutando comando:', command);
