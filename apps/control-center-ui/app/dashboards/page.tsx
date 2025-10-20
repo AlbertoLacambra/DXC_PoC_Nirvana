@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-type DashboardType = 'drift' | 'pipelines';
+type DashboardType = 'drift' | 'pipelines' | 'finops';
 
 export default function DashboardsPage() {
   const [activeDashboard, setActiveDashboard] = useState<DashboardType>('drift');
@@ -73,6 +73,22 @@ export default function DashboardsPage() {
                 </div>
               </div>
             </button>
+            <button
+              onClick={() => setActiveDashboard('finops')}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeDashboard === 'finops'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">💰</span>
+                <div className="text-left">
+                  <div className="text-sm font-bold">FinOps</div>
+                  <div className="text-xs opacity-80">Costos & Optimización</div>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -80,6 +96,7 @@ export default function DashboardsPage() {
         <div className="bg-white rounded-lg shadow-xl overflow-hidden">
           {activeDashboard === 'drift' && <DriftDashboard />}
           {activeDashboard === 'pipelines' && <PipelinesDashboard />}
+          {activeDashboard === 'finops' && <FinOpsDashboard />}
         </div>
       </div>
 
@@ -1070,6 +1087,248 @@ function PipelinesDashboard() {
             <span>❌ {((stats.failed / stats.totalPipelines) * 100).toFixed(1)}% Fallidas</span>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// FinOps Dashboard Component
+// ============================================
+function FinOpsDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [finopsData, setFinopsData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'costs' | 'utilization' | 'recommendations'>('costs');
+
+  useEffect(() => {
+    fetchFinOpsData();
+  }, []);
+
+  const fetchFinOpsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/finops');
+      const data = await response.json();
+      
+      if (data.success) {
+        setFinopsData(data);
+      } else {
+        setError(data.error || 'Error al obtener datos FinOps');
+      }
+    } catch (err: any) {
+      setError('Error de conexión: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-8">
+      {/* Header con KPIs principales */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <span className="text-4xl">💰</span>
+              FinOps Dashboard
+            </h2>
+            <p className="text-gray-500 mt-1">Análisis de costos y optimización de recursos</p>
+          </div>
+          <button
+            onClick={fetchFinOpsData}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              loading
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg hover:shadow-xl'
+            }`}
+          >
+            {loading ? '🔄 Analizando...' : '🔄 Actualizar'}
+          </button>
+        </div>
+
+        {/* KPIs Cards */}
+        {!loading && finopsData && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+              <div className="text-sm font-medium text-blue-700 mb-2">Costo Mensual Total</div>
+              <div className="text-3xl font-bold text-blue-900">
+                €{finopsData.summary.totalMonthlyCost.toFixed(2)}
+              </div>
+              <div className="text-xs text-blue-600 mt-2">Último mes</div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
+              <div className="text-sm font-medium text-green-700 mb-2">Ahorro Potencial</div>
+              <div className="text-3xl font-bold text-green-900">
+                €{finopsData.summary.potentialSavings.toFixed(2)}
+              </div>
+              <div className="text-xs text-green-600 mt-2">Por optimización</div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 border border-orange-200">
+              <div className="text-sm font-medium text-orange-700 mb-2">Recursos Infrautilizados</div>
+              <div className="text-3xl font-bold text-orange-900">
+                {finopsData.summary.underutilizedCount}
+              </div>
+              <div className="text-xs text-orange-600 mt-2">Requieren atención</div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
+              <div className="text-sm font-medium text-purple-700 mb-2">Score de Optimización</div>
+              <div className="text-3xl font-bold text-purple-900">
+                {finopsData.summary.optimizationScore}/100
+              </div>
+              <div className="text-xs text-purple-600 mt-2">Eficiencia actual</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6">
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('costs')}
+            className={`px-6 py-3 font-semibold transition-all ${
+              activeTab === 'costs'
+                ? 'border-b-2 border-purple-600 text-purple-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📊 Costos
+          </button>
+          <button
+            onClick={() => setActiveTab('utilization')}
+            className={`px-6 py-3 font-semibold transition-all ${
+              activeTab === 'utilization'
+                ? 'border-b-2 border-purple-600 text-purple-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📈 Utilización
+          </button>
+          <button
+            onClick={() => setActiveTab('recommendations')}
+            className={`px-6 py-3 font-semibold transition-all ${
+              activeTab === 'recommendations'
+                ? 'border-b-2 border-purple-600 text-purple-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            💡 Recomendaciones
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading && (
+        <div className="text-center py-20">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <p className="text-gray-600 mt-4">Analizando costos y recursos...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-red-700 font-semibold">❌ Error</p>
+          <p className="text-red-600 mt-2">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && finopsData && (
+        <>
+          {activeTab === 'costs' && (
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">💳 Análisis de Costos</h3>
+                <p className="text-gray-600">
+                  Esta sección mostrará el desglose de costos por subscription, resource group y servicio.
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  🚧 En desarrollo: Integración con Azure Cost Management API
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'utilization' && (
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Recursos Infrautilizados</h3>
+                <p className="text-gray-600">
+                  Esta sección analizará métricas de Azure Monitor (CPU, Memory, Disk, Network) para detectar recursos infrautilizados.
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  🚧 En desarrollo: Integración con Azure Monitor API
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'recommendations' && (
+            <div className="space-y-6">
+              {finopsData.recommendations.length === 0 ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
+                  <span className="text-6xl">✅</span>
+                  <h3 className="text-xl font-semibold text-green-800 mt-4">¡Excelente!</h3>
+                  <p className="text-green-700 mt-2">
+                    No hay recomendaciones de optimización en este momento.
+                  </p>
+                </div>
+              ) : (
+                finopsData.recommendations.map((rec: any) => (
+                  <div key={rec.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            rec.severity === 'high' ? 'bg-red-100 text-red-700' :
+                            rec.severity === 'medium' ? 'bg-orange-100 text-orange-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {rec.severity === 'high' ? '🔴 Alta' : 
+                             rec.severity === 'medium' ? '🟠 Media' : '🟡 Baja'}
+                          </span>
+                          <h4 className="text-lg font-semibold text-gray-800">{rec.resource}</h4>
+                          <span className="text-sm text-gray-500">({rec.type})</span>
+                        </div>
+                        <p className="text-gray-600 mb-3">
+                          <strong>Problema:</strong> {rec.issue}
+                        </p>
+                        <p className="text-gray-700 mb-3">
+                          <strong>Recomendación:</strong> {rec.recommendation}
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <span className="text-green-600 font-semibold">
+                            💰 Ahorro: €{rec.potentialSavings}/mes
+                          </span>
+                          <span className={`text-sm px-2 py-1 rounded ${
+                            rec.impact === 'low' ? 'bg-blue-100 text-blue-700' :
+                            rec.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-orange-100 text-orange-700'
+                          }`}>
+                            Impacto: {rec.impact}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-6 flex flex-col gap-2">
+                        <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm font-medium">
+                          🔧 Generar PR
+                        </button>
+                        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all text-sm font-medium">
+                          📧 Notificar Owner
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
