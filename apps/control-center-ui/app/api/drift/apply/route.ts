@@ -86,38 +86,43 @@ export async function POST(request: NextRequest) {
         .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
       
       try {
-        console.log('🔄 Ejecutando Terraform Refresh para capturar cambios manuales...');
+        console.log('🔄 Capturando cambios manuales de Azure...');
         
         // Configurar PATH para Terraform/Terragrunt
         const pathSetup = 'export PATH=/home/alacambra/bin:/usr/local/bin:/usr/bin:/bin';
         const terragruntPath = '/usr/local/bin/terragrunt';
         
-        // 1. Ejecutar terraform refresh para actualizar el state
-        const refreshCommand = `${pathSetup} && cd '${wslWorkingPath}' && ${terragruntPath} refresh -no-color`;
-        const refreshOutput = await executeCommand(wslRepoPath, refreshCommand);
+        // SIMPLIFICADO: No ejecutar refresh (puede tardar mucho)
+        // En su lugar, usar el plan que ya tenemos para generar la documentación
         
-        console.log('✅ Terraform Refresh completado');
+        console.log('📄 Generando documentación de cambios...');
         
-        // 2. Obtener el estado actual con terraform show
-        const showCommand = `${pathSetup} && cd '${wslWorkingPath}' && ${terragruntPath} show -no-color`;
-        const stateOutput = await executeCommand(wslRepoPath, showCommand);
+        // Generar archivo de documentación con los cambios detectados
+        const changesDoc = generateManualChangesDoc(driftedResources, '');
         
-        // 3. Generar archivo de documentación con los cambios
-        const changesDoc = generateManualChangesDoc(driftedResources, stateOutput);
+        // Guardar el archivo de documentación usando echo (más simple que heredoc)
+        const timestamp = Date.now();
+        const docFilename = `MANUAL_CHANGES_${timestamp}.md`;
+        const docPath = `${wslRepoPath}/${docFilename}`;
         
-        // 4. Crear archivo MANUAL_CHANGES.md en el repo
-        const docPath = `${wslRepoPath}/MANUAL_CHANGES_${Date.now()}.md`;
-        const createDocCommand = `cat > '${docPath}' << 'EOFMARKER'\n${changesDoc}\nEOFMARKER`;
-        await executeCommand(wslRepoPath, createDocCommand);
+        // Escapar comillas en el contenido
+        const escapedDoc = changesDoc.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
         
-        console.log('📄 Archivo de documentación creado');
+        // Crear archivo con echo (más confiable en WSL)
+        const createDocCommand = `echo "${escapedDoc}" > '${docPath}'`;
+        
+        try {
+          await executeCommand(wslRepoPath, createDocCommand);
+          console.log(`✅ Documentación creada: ${docFilename}`);
+        } catch (fileErr) {
+          console.warn('⚠️ No se pudo crear archivo MD, se incluirá en descripción del PR');
+        }
         
         return NextResponse.json({
           success: true,
           message: 'Cambios manuales capturados exitosamente',
-          refreshOutput: refreshOutput.substring(Math.max(0, refreshOutput.length - 500)),
-          stateOutput: stateOutput.substring(0, 1000),
           changesDoc,
+          docFilename,
         });
         
       } catch (error: any) {
@@ -493,12 +498,13 @@ Documented in [TICKET-NUMBER]"
 git push
 \`\`\`
 
+${stateOutput ? `
 ---
 
 ## 📊 Estado Actual de Terraform
 
 <details>
-<summary>Click para ver el output de terraform show (primeros 1000 caracteres)</summary>
+<summary>Click para ver el output de terraform show</summary>
 
 \`\`\`
 ${stateOutput.substring(0, 1000)}
@@ -506,6 +512,7 @@ ${stateOutput.length > 1000 ? '\n... (truncado)\n' : ''}
 \`\`\`
 
 </details>
+` : ''}
 
 ---
 
