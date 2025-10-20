@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "DXC Cloud Mind - Nirvana",
-  description: "Plataforma unificada de desarrollo Cloud impulsada por IA | Developed by DXC Cloud Team",
+  description: "Plataforma unificada de desarrollo Cloud impulsada por IA | Developed by DXC Iberia Cloud Team",
 };
 
 export default function RootLayout({

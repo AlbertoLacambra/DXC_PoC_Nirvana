@@ -15,13 +15,9 @@ export default function DashboardsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <img 
-                src="/dxc-logo.svg" 
+                src="/dxc-logo.jpg" 
                 alt="DXC Technology" 
                 className="h-10 w-auto"
-                onError={(e) => {
-                  e.currentTarget.src = '/dxc-logo.png';
-                  e.currentTarget.onerror = null;
-                }}
               />
               <div className="h-10 w-px bg-gray-300"></div>
               <div>
@@ -94,7 +90,7 @@ export default function DashboardsPage() {
             © {new Date().getFullYear()} DXC Technology. All rights reserved.
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Developed by <span className="font-semibold text-blue-600">DXC Cloud Team</span>
+            Developed by <span className="font-semibold text-blue-600">DXC Iberia Cloud Team</span>
           </p>
         </div>
       </footer>

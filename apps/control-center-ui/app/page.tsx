@@ -9,14 +9,9 @@ export default function Home() {
           <div className="flex items-center justify-center gap-4 mb-6">
             {/* Logo DXC */}
             <img 
-              src="/dxc-logo.svg" 
+              src="/dxc-logo.jpg" 
               alt="DXC Technology" 
               className="h-12 w-auto"
-              onError={(e) => {
-                // Fallback si no encuentra el logo SVG, intenta PNG
-                e.currentTarget.src = '/dxc-logo.png';
-                e.currentTarget.onerror = null; // Evita loop infinito
-              }}
             />
             <div className="h-12 w-px bg-gray-300"></div>
             <div className="text-left">
@@ -84,7 +79,7 @@ export default function Home() {
               © {new Date().getFullYear()} DXC Technology. All rights reserved.
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              Developed by <span className="font-semibold text-blue-600">DXC Cloud Team</span>
+              Developed by <span className="font-semibold text-blue-600">DXC Iberia Cloud Team</span>
             </p>
           </div>
         </footer>

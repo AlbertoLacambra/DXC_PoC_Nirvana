@@ -495,7 +495,7 @@ vim main.tf
 tags = merge(var.tags, {
   DriftTest  = "active"
   LastUpdate = "2025-10-20"
-  Owner      = "DXC Cloud Team"
+  Owner      = "DXC Iberia Cloud Team"
   ManualTest = "true"  # <-- NUEVO: Agregado durante incidencia
 })
 \`\`\`

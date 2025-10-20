@@ -70,13 +70,9 @@ export default function TestChatPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <img 
-                src="/dxc-logo.svg" 
+                src="/dxc-logo.jpg" 
                 alt="DXC Technology" 
                 className="h-8 w-auto"
-                onError={(e) => {
-                  e.currentTarget.src = '/dxc-logo.png';
-                  e.currentTarget.onerror = null;
-                }}
               />
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">
@@ -194,7 +190,7 @@ export default function TestChatPage() {
               © {new Date().getFullYear()} DXC Technology. All rights reserved.
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              Developed by <span className="font-semibold text-blue-600">DXC Cloud Team</span>
+              Developed by <span className="font-semibold text-blue-600">DXC Iberia Cloud Team</span>
             </p>
           </div>
         </footer>
