@@ -362,8 +362,43 @@ function OverviewTab({ loading, data }: { loading: boolean; data: any }) {
 // COST ANALYSIS TAB - Basado en FOCUS
 // ============================================
 function CostAnalysisTab() {
+  const [loading, setLoading] = useState(true);
+  const [costData, setCostData] = useState<any>(null);
+
+  useEffect(() => {
+    fetchCostData();
+  }, []);
+
+  const fetchCostData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/finops');
+      const data = await response.json();
+      if (data.success) {
+        setCostData(data.costs);
+      }
+    } catch (err) {
+      console.error('Error fetching cost data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="text-gray-600 mt-4">Cargando análisis de costos FOCUS...</p>
+      </div>
+    );
+  }
+
+  const focusData = costData?.focus;
+  const trendData = costData?.trend || [];
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="bg-white rounded-xl shadow-md p-8">
         <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
           <span className="text-3xl">💳</span>
@@ -374,33 +409,150 @@ function CostAnalysisTab() {
           consistencia multi-cloud y compatibilidad con herramientas FinOps estándar.
         </p>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        {/* FOCUS Core Dimensions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
           <h4 className="font-semibold text-blue-900 mb-3">📊 FOCUS Core Dimensions</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <strong className="text-blue-800">Billing Period:</strong>
-              <p className="text-blue-600">Análisis mensual con trending</p>
+              <p className="text-blue-600">{focusData?.billingPeriod?.month || 'N/A'}</p>
+              <p className="text-xs text-blue-500">
+                {focusData?.billingPeriod?.start} a {focusData?.billingPeriod?.end}
+              </p>
             </div>
             <div>
               <strong className="text-blue-800">Provider:</strong>
               <p className="text-blue-600">Microsoft Azure</p>
             </div>
             <div>
-              <strong className="text-blue-800">Service Category:</strong>
-              <p className="text-blue-600">Compute, Storage, Network, Database, AI/ML</p>
+              <strong className="text-blue-800">Total Billed Cost:</strong>
+              <p className="text-blue-600 text-lg font-bold">
+                €{focusData?.totalBilledCost?.toFixed(2) || '0.00'}
+              </p>
             </div>
             <div>
-              <strong className="text-blue-800">Pricing Category:</strong>
-              <p className="text-blue-600">On-Demand, Reserved, Spot, Commitment-based</p>
+              <strong className="text-blue-800">Effective Cost:</strong>
+              <p className="text-blue-600 text-lg font-bold">
+                €{focusData?.totalEffectiveCost?.toFixed(2) || '0.00'}
+              </p>
+              {focusData?.totalEffectiveCost < focusData?.totalBilledCost && (
+                <p className="text-xs text-green-600">
+                  ✅ Ahorro: €{(focusData.totalBilledCost - focusData.totalEffectiveCost).toFixed(2)}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="mt-6 text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">🚧 Integración con Azure Cost Management API en desarrollo</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Próximamente: Gráficos de tendencia, desglose por servicio, análisis de anomalías
-          </p>
+        {/* Cost by Service Category (FOCUS) */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-4">📦 Cost by Service Category</h4>
+          <div className="space-y-3">
+            {focusData?.byServiceCategory && Object.entries(focusData.byServiceCategory)
+              .filter(([_, cost]) => (cost as number) > 0)
+              .sort(([_, a], [__, b]) => (b as number) - (a as number))
+              .map(([category, cost]) => {
+                const costNum = cost as number;
+                const percentage = (costNum / focusData.totalBilledCost) * 100;
+                return (
+                  <div key={category} className="flex items-center gap-4">
+                    <div className="w-32 text-sm font-medium text-gray-700">{category}</div>
+                    <div className="flex-1">
+                      <div className="bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                        <div 
+                          className="bg-blue-500 h-full rounded-full transition-all"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                        <div className="absolute inset-0 flex items-center justify-end pr-2">
+                          <span className="text-xs font-semibold text-gray-700">
+                            €{costNum.toFixed(2)} ({percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Cost by Pricing Category (FOCUS) */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-4">💰 Cost by Pricing Category</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {focusData?.byPricingCategory && Object.entries(focusData.byPricingCategory)
+              .filter(([_, cost]) => (cost as number) > 0)
+              .map(([category, cost]) => {
+                const costNum = cost as number;
+                const percentage = (costNum / focusData.totalBilledCost) * 100;
+                const colorClass = 
+                  category === 'Reserved' ? 'bg-green-50 border-green-200 text-green-700' :
+                  category === 'Spot' ? 'bg-purple-50 border-purple-200 text-purple-700' :
+                  category === 'On-Demand' ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                  'bg-gray-50 border-gray-200 text-gray-700';
+                
+                return (
+                  <div key={category} className={`border rounded-lg p-4 ${colorClass}`}>
+                    <div className="text-xs font-medium mb-1">{category}</div>
+                    <div className="text-lg font-bold">€{costNum.toFixed(0)}</div>
+                    <div className="text-xs opacity-75">{percentage.toFixed(1)}%</div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Cost by Resource Group */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-4">🏢 Cost by Resource Group</h4>
+          <div className="space-y-2">
+            {focusData?.byResourceGroup && Object.entries(focusData.byResourceGroup)
+              .sort(([_, a], [__, b]) => (b as number) - (a as number))
+              .map(([rg, cost]) => {
+                const costNum = cost as number;
+                const percentage = (costNum / focusData.totalBilledCost) * 100;
+                return (
+                  <div key={rg} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">{rg}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-600">{percentage.toFixed(1)}%</span>
+                      <span className="text-sm font-bold text-gray-900">€{costNum.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Cost Trend (últimos 6 meses) */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h4 className="font-semibold text-gray-800 mb-4">📈 Cost Trend (últimos 6 meses)</h4>
+          {trendData.length > 0 ? (
+            <div className="space-y-2">
+              {trendData.map((month: any) => (
+                <div key={month.month} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-24 text-sm font-medium text-gray-700">{month.month}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-bold text-gray-900">
+                        €{month.billedCost.toFixed(2)}
+                      </div>
+                      {month.variance !== 0 && (
+                        <span className={`text-xs font-semibold ${month.variance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {month.variance > 0 ? '↑' : '↓'} {Math.abs(month.variance).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Effective: €{month.effectiveCost.toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No hay datos de tendencia disponibles</p>
+          )}
         </div>
       </div>
     </div>
