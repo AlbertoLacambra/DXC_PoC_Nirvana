@@ -9,24 +9,65 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const terraformPath = process.env.TERRAFORM_PATH;
+    const terragruntEnabled = process.env.TERRAGRUNT_ENABLED === 'true';
+    const terragruntPath = process.env.TERRAGRUNT_PATH;
     
-    if (!terraformPath) {
-      return NextResponse.json(
-        { error: 'TERRAFORM_PATH no está configurado en .env.local' },
-        { status: 500 }
-      );
+    // Check if drift monitoring is disabled
+    if (!terraformPath && !terragruntPath) {
+      return NextResponse.json({
+        success: true,
+        hasChanges: false,
+        stats: {
+          totalResources: 0,
+          inSync: 0,
+          drifted: 0,
+          toAdd: 0,
+          toChange: 0,
+          toDestroy: 0,
+          unmanaged: 0,
+        },
+        driftedResources: [],
+        lastCheck: new Date().toISOString(),
+        message: 'DRIFT monitoring deshabilitado. Configure TERRAFORM_PATH o TERRAGRUNT_PATH en .env.local',
+      });
     }
 
-    // Ejecutar terraform plan para detectar drift
-    // Usamos -detailed-exitcode para obtener códigos de salida específicos:
-    // 0 = no changes, 1 = error, 2 = changes detected
-    const command = `cd "${terraformPath}" && terraform plan -detailed-exitcode -no-color`;
+    const workingPath = terragruntPath || terraformPath;
+
+    // Detect if we're running in WSL or Windows
+    const isWSL = process.platform === 'linux' && process.env.WSL_DISTRO_NAME;
+    
+    let command: string;
+    let workingDir: string;
+    
+    // Determine which tool to use
+    const tfCommand = terragruntEnabled ? 'terragrunt' : 'terraform';
+    
+    if (isWSL || process.platform === 'linux') {
+      // Running in WSL/Linux - use path directly
+      workingDir = workingPath!
+        .replace(/\\/g, '/')
+        .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
+      command = `cd '${workingDir}' && ${tfCommand} plan -detailed-exitcode -no-color`;
+    } else {
+      // Running in Windows - use WSL
+      const wslPath = workingPath!
+        .replace(/\\/g, '/')
+        .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
+      command = `wsl bash -c "cd '${wslPath}' && ${tfCommand} plan -detailed-exitcode -no-color"`;
+    }
+
+    console.log('Ejecutando comando:', command);
+    console.log('Platform:', process.platform, 'WSL:', isWSL, 'Tool:', tfCommand);
     
     let planOutput = '';
     let hasChanges = false;
     
     try {
-      const { stdout } = await execAsync(command);
+      const { stdout } = await execAsync(command, {
+        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+        timeout: 120000, // 2 minutes
+      });
       planOutput = stdout;
       hasChanges = false; // Exit code 0 = no changes
     } catch (error: any) {

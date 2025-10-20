@@ -77,8 +77,8 @@ inputs = {
 }
 
 # Terraform source para Hub
-# Execute directly in the environments/hub directory (no cache)
-# This allows module paths like ../../modules/* to work correctly
+# Use parent directory to include both environments/hub and modules/
+# The // indicates where terraform should run from within the copied directory
 terraform {
-  source = "${get_parent_terragrunt_dir()}/environments/hub//."
+  source = "${get_parent_terragrunt_dir()}//environments/hub"
 }
