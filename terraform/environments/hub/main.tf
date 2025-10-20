@@ -10,6 +10,7 @@ resource "azurerm_resource_group" "hub" {
     DriftTest  = "active"
     LastUpdate = "2025-10-20"
     Owner      = "DXC Cloud Team"
+    ManualTest = "true"  # <-- NUEVO: Agregado durante incidencia
   })
 }
 
