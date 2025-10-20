@@ -194,7 +194,7 @@ export default function TestChatPage() {
               © {new Date().getFullYear()} DXC Technology. All rights reserved.
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              Developed by <span className="font-semibold text-blue-600">Alberto Lacambra</span>
+              Developed by <span className="font-semibold text-blue-600">DXC Cloud Team</span>
             </p>
           </div>
         </footer>

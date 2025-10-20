@@ -1,3 +1,5 @@
+'use client';
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center p-8 bg-gradient-to-br from-slate-50 to-blue-50">
@@ -41,7 +43,17 @@ export default function Home() {
         </div>
 
         {/* Módulos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <a 
+            href="/dashboards"
+            className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+          >
+            <div className="text-4xl mb-3">📊</div>
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Dashboards</h2>
+            <p className="text-gray-600">
+              Visualización de métricas, DRIFT y Pipelines
+            </p>
+          </a>
           <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
             <div className="text-4xl mb-3">🚀</div>
             <h2 className="text-xl font-semibold mb-2 text-gray-800">Vibe Coding</h2>
@@ -72,7 +84,7 @@ export default function Home() {
               © {new Date().getFullYear()} DXC Technology. All rights reserved.
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              Developed by <span className="font-semibold text-blue-600">Alberto Lacambra</span>
+              Developed by <span className="font-semibold text-blue-600">DXC Cloud Team</span>
             </p>
           </div>
         </footer>
