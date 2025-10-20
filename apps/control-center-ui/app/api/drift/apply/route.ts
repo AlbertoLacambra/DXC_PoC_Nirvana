@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import path from 'path';
 
 const execFileAsync = promisify(execFile);
 
@@ -158,11 +159,23 @@ export async function POST(request: NextRequest) {
         // 3. Push de la rama
         await executeCommand(wslRepoPath, `git push origin ${branchName}`);
         
-        // 4. Crear Pull Request usando GitHub CLI
+        // 4. Crear archivo temporal con el body del PR (evita problemas con textos largos)
+        const prBodyFile = path.join(wslRepoPath, '.pr-body-temp.md');
+        const escapedPrDesc = prDescription.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+        await executeCommand(wslRepoPath, `echo "${escapedPrDesc}" > '${prBodyFile}'`);
+        
+        // 5. Crear Pull Request usando GitHub CLI con archivo
         const prResult = await executeCommand(
           wslRepoPath, 
-          `gh pr create --title "${prTitle}" --body "${prDescription}" --base master --head ${branchName}`
+          `gh pr create --title "${prTitle}" --body-file '${prBodyFile}' --base master --head ${branchName}`
         );
+        
+        // Limpiar archivo temporal
+        try {
+          await executeCommand(wslRepoPath, `rm -f '${prBodyFile}'`);
+        } catch (cleanupErr) {
+          console.warn('⚠️ No se pudo eliminar archivo temporal:', cleanupErr);
+        }
         
         // Extraer URL del PR
         const prUrlMatch = prResult.match(/https:\/\/github\.com\/[^\s]+/);
