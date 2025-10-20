@@ -66,30 +66,16 @@ export default function Home() {
                 </span>
               </div>
               <h2 className="text-xl font-semibold mb-2 text-gray-800">SRE Agent</h2>
-              <p className="text-gray-700 text-sm mb-3">
+              <p className="text-gray-700 text-sm">
                 Site Reliability Engineering con Azure AI
               </p>
-              <div className="space-y-1 text-xs text-gray-600">
-                <div className="flex items-center gap-1">
-                  <span className="text-green-600">✓</span>
-                  <span>Incident Response & Root Cause Analysis</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-green-600">✓</span>
-                  <span>Observability & Performance Insights</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-green-600">✓</span>
-                  <span>Reliability Recommendations</span>
-                </div>
-              </div>
             </a>
             
             <a 
               href="/finops"
               className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
             >
-              <div className="text-4xl mb-3">�</div>
+              <div className="text-4xl mb-3">💰</div>
               <h2 className="text-xl font-semibold mb-2 text-gray-800">FinOps</h2>
               <p className="text-gray-600 text-sm">
                 Analytics y optimización de costos Cloud
@@ -113,7 +99,7 @@ export default function Home() {
               </p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-              <div className="text-4xl mb-3">�</div>
+              <div className="text-4xl mb-3">📚</div>
               <h2 className="text-xl font-semibold mb-2 text-gray-800">Knowledge Portal</h2>
               <p className="text-gray-600 text-sm">
                 Asistente RAG con documentación técnica
