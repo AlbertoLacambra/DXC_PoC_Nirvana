@@ -19,6 +19,46 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (action === 'apply-terraform') {
+      // Ejecutar terragrunt apply automáticamente
+      const workingPath = process.env.TERRAFORM_PATH || 'c:\\PROYECTS\\DXC_PoC_Nirvana\\terraform\\hub';
+      
+      // Convertir a path WSL
+      const wslPath = workingPath
+        .replace(/\\/g, '/')
+        .replace(/^([A-Za-z]):/, (_, drive) => `/mnt/${drive.toLowerCase()}`);
+      
+      try {
+        console.log('🚀 Ejecutando Terragrunt Apply...');
+        
+        // Configurar PATH para Terraform/Terragrunt
+        const pathSetup = 'export PATH=/home/alacambra/bin:/usr/local/bin:/usr/bin:/bin';
+        const terragruntPath = '/usr/local/bin/terragrunt';
+        
+        // Ejecutar terragrunt apply con auto-approve
+        const applyCommandStr = `${pathSetup} && ${terragruntPath} apply -auto-approve -no-color`;
+        
+        const result = await executeCommand(wslPath, applyCommandStr);
+        
+        console.log('✅ Terragrunt Apply completado');
+        console.log('Output:', result.substring(0, 500)); // Log primeros 500 chars
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Terraform apply ejecutado exitosamente',
+          output: result.substring(Math.max(0, result.length - 1000)), // Últimos 1000 chars
+        });
+        
+      } catch (error: any) {
+        console.error('❌ Error ejecutando Terragrunt Apply:', error);
+        return NextResponse.json({
+          success: false,
+          error: `Error al ejecutar terraform apply: ${error.message}`,
+          details: error.stderr || error.stdout,
+        }, { status: 500 });
+      }
+    }
+
     if (action === 'create-pr') {
       // Crear Pull Request con las correcciones
       const { branchName, commitMessage, prTitle, prDescription } = body;
@@ -95,10 +135,14 @@ async function executeCommand(workingDir: string, command: string): Promise<stri
   const fullCommand = `wsl bash -c "cd '${workingDir}' && ${command}"`;
   console.log('Ejecutando:', fullCommand);
   
+  // Determinar timeout basado en el comando
+  const isApplyCommand = command.includes('apply');
+  const timeout = isApplyCommand ? 300000 : 60000; // 5 min para apply, 1 min para otros
+  
   try {
     const { stdout, stderr } = await execFileAsync('wsl', ['bash', '-c', `cd '${workingDir}' && ${command}`], {
       maxBuffer: 10 * 1024 * 1024,
-      timeout: 60000,
+      timeout,
     });
     
     return stdout + stderr;

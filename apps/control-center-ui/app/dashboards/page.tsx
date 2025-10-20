@@ -233,15 +233,58 @@ ${recommendations.recommendation}
 
       if (result.success) {
         setPrResult(result);
-        const autoRefreshMsg = autoRefresh 
-          ? '\n\n⏱️ El dashboard se actualizará automáticamente en 1 minuto.\nO puedes hacer click en "🔄 Ejecutar Drift Detection" para actualizar inmediatamente después del merge.'
-          : '\n\n💡 Tip: Activa el auto-refresh para ver los cambios automáticamente después del merge.';
-        
-        alert(`✅ Pull Request creada exitosamente!\n\nBranch: ${result.branch}\nURL: ${result.prUrl || 'Ver en GitHub'}${autoRefreshMsg}`);
         setShowApplyModal(false);
         
-        // Refrescar inmediatamente para mostrar el estado actual
-        setTimeout(() => fetchDriftData(), 2000);
+        // Preguntar si quiere aplicar los cambios automáticamente
+        const shouldApply = confirm(
+          `✅ Pull Request creada exitosamente!\n\n` +
+          `Branch: ${result.branch}\n` +
+          `URL: ${result.prUrl || 'Ver en GitHub'}\n\n` +
+          `¿Deseas aplicar los cambios a la infraestructura AHORA con Terragrunt Apply?\n\n` +
+          `⚠️ Esto ejecutará "terragrunt apply -auto-approve" y los cambios se aplicarán inmediatamente en Azure.`
+        );
+        
+        if (shouldApply) {
+          // Ejecutar terragrunt apply
+          try {
+            alert('🚀 Ejecutando Terragrunt Apply... Esto puede tardar un minuto.');
+            
+            const applyResponse = await fetch('/api/drift/apply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'apply-terraform' }),
+            });
+            
+            const applyResult = await applyResponse.json();
+            
+            if (applyResult.success) {
+              alert(
+                `✅ Terragrunt Apply completado exitosamente!\n\n` +
+                `Los cambios se han aplicado a la infraestructura.\n` +
+                `El dashboard se actualizará en 2 segundos para mostrar "0 DRIFT".`
+              );
+              
+              // Refrescar después de 2 segundos
+              setTimeout(() => fetchDriftData(), 2000);
+            } else {
+              throw new Error(applyResult.error || 'Error al ejecutar apply');
+            }
+          } catch (applyErr: any) {
+            alert(
+              `❌ Error al ejecutar Terragrunt Apply:\n\n${applyErr.message}\n\n` +
+              `El PR se creó correctamente pero no se pudieron aplicar los cambios.\n` +
+              `Puedes aplicarlos manualmente con: terragrunt apply`
+            );
+          }
+        } else {
+          // Solo refrescar datos sin aplicar
+          const autoRefreshMsg = autoRefresh 
+            ? '\n\n⏱️ El dashboard se actualizará automáticamente en 1 minuto.'
+            : '\n\n💡 Tip: Activa el auto-refresh para ver los cambios automáticamente.';
+          
+          alert(`✅ PR creado. Puedes revisar y hacer merge manualmente.${autoRefreshMsg}`);
+          setTimeout(() => fetchDriftData(), 2000);
+        }
       } else {
         throw new Error(result.error || 'Error al crear Pull Request');
       }
