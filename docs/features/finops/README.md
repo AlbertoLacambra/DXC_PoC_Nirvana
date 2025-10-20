@@ -24,10 +24,10 @@ La plataforma **FinOps Analytics** de DXC Cloud Mind - Nirvana proporciona anál
 | 🏠 Overview Dashboard | ✅ Completado | Oct 2025 | [Ver docs](./01-overview.md) |
 | 💰 FOCUS Cost Analysis | ✅ Completado | Oct 2025 | [Ver docs](./02-focus-framework.md) |
 | ⚡ Cost Optimizer | ✅ Completado | Oct 2025 | [Ver docs](./03-cost-optimizer.md) |
-| 💎 Rate Optimization | ⏳ Pendiente | - | [Ver docs](./04-rate-optimization.md) |
+| 💎 Rate Optimization | ✅ Completado | Ene 2025 | [Ver docs](./04-rate-optimization.md) |
 | 🛡️ Governance | ⏳ Pendiente | - | [Ver docs](./05-governance.md) |
 | 📊 Reporting | ⏳ Pendiente | - | [Ver docs](./06-reporting.md) |
-| 🤖 Auto-Optimization PR | ⏳ Pendiente | - | [Ver docs](./07-auto-optimization.md) |
+| 🤖 Auto-Optimization PR | ✅ Completado | Ene 2025 | [Ver docs](./05-auto-optimization-pr.md) |
 
 ## 🏗️ Arquitectura
 
@@ -108,7 +108,59 @@ graph LR
 - Estimación de savings (70-90%)
 - Evaluación de riesgos
 
-### 3. Visualization & Reporting
+### 3. Rate Optimization (NEW)
+
+**Savings Plans Analysis:**
+- Azure Compute Savings Plans (1-year: 17%, 3-year: 28%)
+- Hourly commitment calculation
+- ROI Analysis con NPV, IRR y payback period
+- Break-even chart generation (36 meses)
+- Confidence level scoring
+
+**Reserved Instances vs Savings Plans:**
+- Comparación de flexibilidad
+- Trade-off analysis (50% savings vs alta flexibilidad)
+- Recomendación inteligente basada en savings gap
+- VM family grouping
+
+**Commitment Portfolio Optimization:**
+- Target: 70% coverage (FinOps best practice)
+- Strategy: 40% Savings Plans + 30% RI + 30% On-Demand
+- Potential savings calculation
+
+**Spot Pricing & Fleet:**
+- 30-day price history analysis
+- Volatility ratio calculation
+- Eviction rate estimation (2-10%)
+- Spot Fleet optimization (80/20 mix)
+- SKU diversification strategy
+- 99.7% availability target
+
+### 4. Auto-Optimization con PR (LEVEL 2)
+
+**Automatic PR Generation:**
+- Detección de recomendaciones High Priority (7+)
+- Generación de código Terraform validado
+- Creación automática de GitHub PR
+- PR description con análisis detallado y savings
+- Integración con workflow DRIFT existente
+
+**Features:**
+- Dry-run mode (preview sin crear PR)
+- Execute mode (auto-create PR)
+- Terraform code generation para downsize/upsize/shutdown
+- Impact assessment (low/medium/high)
+- Assignees automáticos (CloudOps + FinOps)
+- Testing checklist incluido
+- Rollback strategy documented
+
+**Threshold Configuration:**
+- Min monthly savings: €50
+- Min priority: 7/10
+- Confidence level: High
+- Require manual approval before merge
+
+### 5. Visualization & Reporting
 
 - 📈 6-month cost trend with variance analysis
 - 📊 Service Category breakdown (horizontal bars)
@@ -169,12 +221,12 @@ GET /api/finops?optimizer=true
 ## 📚 Documentación Detallada
 
 1. [**Overview Dashboard**](./01-overview.md) - Vista general y KPIs
-2. [**FOCUS Framework**](./02-focus-framework.md) - Implementación FOCUS v1.0
-3. [**Cost Optimizer**](./03-cost-optimizer.md) - Right-sizing, RI, Spot analysis
-4. [**Rate Optimization**](./04-rate-optimization.md) - Savings Plans, ROI analysis (WIP)
-5. [**Governance**](./05-governance.md) - Policies, tagging, budgets (WIP)
-6. [**Reporting**](./06-reporting.md) - Showback, Chargeback, Power BI (WIP)
-7. [**Auto-Optimization**](./07-auto-optimization.md) - Terraform PR automation (WIP)
+2. [**FOCUS Framework**](./02-focus-framework.md) - Implementación FOCUS v1.0 completa
+3. [**Cost Optimizer**](./03-cost-optimizer.md) - Right-sizing, RI, Spot analysis detallado
+4. [**Rate Optimization**](./04-rate-optimization.md) - ✅ Savings Plans, ROI, NPV/IRR, Portfolio (800+ líneas)
+5. [**Auto-Optimization PR**](./05-auto-optimization-pr.md) - ✅ Terraform PR automation (900+ líneas)
+6. [**Governance**](./06-governance.md) - Policies, tagging, budgets (WIP)
+7. [**Reporting**](./07-reporting.md) - Showback, Chargeback, Power BI (WIP)
 
 ## 🔧 Configuración
 

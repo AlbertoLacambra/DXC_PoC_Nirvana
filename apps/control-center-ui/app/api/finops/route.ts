@@ -13,6 +13,11 @@ import {
   generateOptimizerSummary,
   getVMSku,
 } from './optimizer-engine';
+import { 
+  executeAutoOptimization, 
+  executeAutoOptimizationDryRun,
+  type AutoOptimizationConfig,
+} from './auto-optimization-service';
 
 const execFileAsync = promisify(execFile);
 
@@ -345,3 +350,91 @@ function generateRecommendations(costSummary: any, optimizerData?: OptimizerResp
   
   return recommendations;
 }
+
+/**
+ * POST /api/finops - Execute Auto-Optimization
+ * 
+ * Supports two modes:
+ * - Dry-run (preview): POST /api/finops?action=auto-optimize&dryRun=true
+ * - Execute: POST /api/finops?action=auto-optimize
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const dryRun = searchParams.get('dryRun') === 'true';
+    
+    if (action === 'auto-optimize') {
+      console.log('🤖 Starting Auto-Optimization...');
+      console.log('Mode:', dryRun ? 'DRY-RUN (Preview)' : 'EXECUTE');
+      
+      // Get current recommendations
+      const workingPath = process.env.TERRAFORM_PATH || 'c:\\PROYECTS\\DXC_PoC_Nirvana\\terraform\\hub';
+      
+      // Get subscription ID from Terraform
+      const subscriptionId = 'df4087e7-51e2-44ab-ae08-f0e7dcfe1b64'; // DXC subscription
+      
+      // Get VMs
+      console.log('📊 Fetching VMs...');
+      const vms = await getVirtualMachines(subscriptionId);
+      console.log(`✅ Found ${vms.length} VMs`);
+      
+      // Analyze utilization
+      console.log('📈 Analyzing VM utilization...');
+      const utilizationPromises = vms.map(vm => 
+        analyzeVMUtilization(
+          vm.id,
+          vm.name,
+          vm.resourceGroup,
+          vm.location,
+          vm.sku,
+          vm.estimatedMonthlyCost
+        )
+      );
+      const utilizations = await Promise.all(utilizationPromises);
+      console.log(`✅ Analyzed ${utilizations.length} VMs`);
+      
+      // Generate recommendations
+      console.log('🔧 Generating recommendations...');
+      const rightSizingRecs = utilizations
+        .map(u => generateRightSizingRecommendation(u, getVMSku(u.sku)))
+        .filter(rec => rec !== null);
+      
+      console.log(`📊 Found ${rightSizingRecs.length} optimization opportunities`);
+      
+      // Execute auto-optimization
+      const config: AutoOptimizationConfig = {
+        enabled: true,
+        autoCreatePR: !dryRun,
+        minMonthlySavings: 50,
+        maxPriority: 7,
+        requireApproval: true,
+        assignees: ['cloudops@dxc.com', 'finops@dxc.com'],
+        terraformPath: workingPath,
+      };
+      
+      const result = dryRun 
+        ? await executeAutoOptimizationDryRun(rightSizingRecs, config)
+        : await executeAutoOptimization(rightSizingRecs, config);
+      
+      return NextResponse.json({
+        success: result.success,
+        mode: dryRun ? 'dry-run' : 'execute',
+        result,
+      });
+    }
+    
+    return NextResponse.json({
+      error: 'Invalid action',
+      availableActions: ['auto-optimize'],
+    }, { status: 400 });
+    
+  } catch (error: any) {
+    console.error('❌ Error en POST /api/finops:', error);
+    return NextResponse.json({
+      error: 'Error executing auto-optimization',
+      details: error.message,
+    }, { status: 500 });
+  }
+}
+

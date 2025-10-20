@@ -569,6 +569,8 @@ function OptimizationTab() {
   const [optimizerData, setOptimizerData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [autoOptimizing, setAutoOptimizing] = useState(false);
+  const [autoOptResult, setAutoOptResult] = useState<any>(null);
 
   useEffect(() => {
     async function fetchOptimizerData() {
@@ -591,6 +593,29 @@ function OptimizationTab() {
 
     fetchOptimizerData();
   }, []);
+
+  const handleAutoOptimize = async (dryRun: boolean) => {
+    try {
+      setAutoOptimizing(true);
+      setAutoOptResult(null);
+      
+      const url = `/api/finops?action=auto-optimize${dryRun ? '&dryRun=true' : ''}`;
+      const response = await fetch(url, { method: 'POST' });
+      const result = await response.json();
+      
+      setAutoOptResult(result);
+      
+      if (result.success && result.result.prCreated) {
+        alert(`✅ Pull Request creado exitosamente!\n\nPR #${result.result.pr.prNumber}\n${result.result.pr.prUrl}\n\nTotal Savings: €${result.result.pr.totalMonthlySavings.toFixed(2)}/mes`);
+      } else if (result.success) {
+        alert(`ℹ️ Preview generado:\n\n${result.result.changesGenerated} cambios Terraform\nAhorros: €${result.result.terraformChanges.reduce((sum: number, c: any) => sum + c.monthlySavings, 0).toFixed(2)}/mes`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setAutoOptimizing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -639,6 +664,104 @@ function OptimizationTab() {
             <div className="bg-green-400 text-green-900 px-4 py-2 rounded-lg font-bold">
               Score: {summary.optimizationScore}/100
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🤖 Auto-Optimization Section - LEVEL 2 Feature */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-start gap-4">
+          <span className="text-5xl">🤖</span>
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="text-2xl font-bold">Auto-Optimization con PR</h4>
+                <p className="text-purple-100 mt-1">
+                  Genera automáticamente Pull Requests con cambios Terraform para implementar las recomendaciones de FinOps
+                </p>
+              </div>
+              <div className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                LEVEL 2
+              </div>
+            </div>
+            
+            <div className="bg-white bg-opacity-10 rounded-lg p-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-purple-200 text-xs mb-1">✓ Detección automática</div>
+                  <div className="font-semibold">Recomendaciones de alta prioridad</div>
+                </div>
+                <div>
+                  <div className="text-purple-200 text-xs mb-1">✓ Generación de código</div>
+                  <div className="font-semibold">Cambios Terraform validados</div>
+                </div>
+                <div>
+                  <div className="text-purple-200 text-xs mb-1">✓ Workflow integrado</div>
+                  <div className="font-semibold">PR con análisis detallado</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleAutoOptimize(true)}
+                disabled={autoOptimizing}
+                className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>👁️</span>
+                {autoOptimizing ? 'Analizando...' : 'Preview (Dry-Run)'}
+              </button>
+              
+              <button
+                onClick={() => handleAutoOptimize(false)}
+                disabled={autoOptimizing}
+                className="bg-yellow-400 text-purple-900 px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>🚀</span>
+                {autoOptimizing ? 'Ejecutando...' : 'Auto-Apply & Create PR'}
+              </button>
+            </div>
+
+            {autoOptResult && (
+              <div className="mt-4 bg-white bg-opacity-20 rounded-lg p-4">
+                <div className="text-sm">
+                  <div className="font-semibold mb-2">Resultado:</div>
+                  {autoOptResult.success ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span>✅</span>
+                        <span>Operación exitosa</span>
+                      </div>
+                      <div className="text-purple-100 text-xs space-y-1">
+                        <div>• Recomendaciones analizadas: {autoOptResult.result.recommendationsAnalyzed}</div>
+                        <div>• Cambios generados: {autoOptResult.result.changesGenerated}</div>
+                        {autoOptResult.result.pr && (
+                          <>
+                            <div>• PR creado: #{autoOptResult.result.pr.prNumber}</div>
+                            <div>• Ahorros totales: €{autoOptResult.result.pr.totalMonthlySavings.toFixed(2)}/mes</div>
+                            <div>
+                              <a 
+                                href={autoOptResult.result.pr.prUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-yellow-300 hover:text-yellow-200 underline"
+                              >
+                                🔗 Ver Pull Request
+                              </a>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-red-200">
+                      <span>❌</span>
+                      <span>Error: {autoOptResult.result.errors.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
