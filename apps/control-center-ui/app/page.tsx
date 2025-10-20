@@ -63,13 +63,16 @@ export default function Home() {
               Asistente RAG con documentación técnica
             </p>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
+          <a 
+            href="/finops"
+            className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+          >
             <div className="text-4xl mb-3">💰</div>
             <h2 className="text-xl font-semibold mb-2 text-gray-800">FinOps</h2>
             <p className="text-gray-600">
               Analytics y optimización de costos
             </p>
-          </div>
+          </a>
         </div>
 
         {/* Footer con Copyright */}
