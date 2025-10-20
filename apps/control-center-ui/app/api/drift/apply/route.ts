@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 
 const execFileAsync = promisify(execFile);
 
@@ -100,22 +102,18 @@ export async function POST(request: NextRequest) {
         // Generar archivo de documentación con los cambios detectados
         const changesDoc = generateManualChangesDoc(driftedResources, '');
         
-        // Guardar el archivo de documentación usando echo (más simple que heredoc)
+        // Guardar el archivo de documentación
         const timestamp = Date.now();
         const docFilename = `MANUAL_CHANGES_${timestamp}.md`;
-        const docPath = `${wslRepoPath}/${docFilename}`;
+        const docPath = path.join(repoPath, docFilename);
         
-        // Escapar comillas en el contenido
-        const escapedDoc = changesDoc.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-        
-        // Crear archivo con echo (más confiable en WSL)
-        const createDocCommand = `echo "${escapedDoc}" > '${docPath}'`;
-        
+        // Usar Node.js fs para escribir el archivo directamente (más confiable que bash)
         try {
-          await executeCommand(wslRepoPath, createDocCommand);
+          fs.writeFileSync(docPath, changesDoc, 'utf8');
           console.log(`✅ Documentación creada: ${docFilename}`);
         } catch (fileErr) {
-          console.warn('⚠️ No se pudo crear archivo MD, se incluirá en descripción del PR');
+          console.warn('⚠️ No se pudo crear archivo MD:', fileErr);
+          console.warn('Se incluirá en descripción del PR');
         }
         
         return NextResponse.json({
