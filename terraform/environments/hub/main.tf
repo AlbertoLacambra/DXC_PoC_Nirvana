@@ -6,7 +6,11 @@
 resource "azurerm_resource_group" "hub" {
   name     = "cloudmind-hub-rg"
   location = var.location
-  tags     = var.tags
+  tags     = merge(var.tags, {
+    DriftTest  = "active"
+    LastUpdate = "2025-10-20"
+    Owner      = "DXC Cloud Team"
+  })
 }
 
 # AKS Namespaces - Configure namespaces in existing AKS cluster

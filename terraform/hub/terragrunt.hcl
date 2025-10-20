@@ -30,15 +30,15 @@ inputs = {
   existing_resources = local.existing_resources
   
   # Nuevos recursos a crear
-  # Container Registry - OPTIMIZADO PARA POC
+  # Container Registry - DRIFT TEST: Changed SKU to detect configuration drift
   create_acr = true
   acr_config = {
     name_prefix                   = "dxccloudmind"
-    sku                           = "Basic"  # Cambiado de Standard a Basic para PoC
-    admin_enabled                 = false
+    sku                           = "Standard"  # DRIFT TEST: Changed from Basic to Standard
+    admin_enabled                 = true        # DRIFT TEST: Changed from false to true
     public_network_access_enabled = true
-    retention_policy_enabled      = false
-    retention_policy_days         = 7
+    retention_policy_enabled      = true        # DRIFT TEST: Changed from false to true
+    retention_policy_days         = 30          # DRIFT TEST: Changed from 7 to 30
   }
   
   # Monitoring - SOLO GRATUITO (Container Insights)
@@ -69,10 +69,12 @@ inputs = {
   # Tags específicos Hub
   tags = {
     Project     = "DXC-Cloud-Mind"
-    Environment = "poc"
+    Environment = "poc-test"  # Changed from "poc" to simulate drift
     CostCenter  = "shared-services"
     ManagedBy   = "terraform"
     Repository  = "DXC_PoC_Nirvana"
+    DriftTest   = "true"  # New tag to simulate drift
+    LastUpdate  = "2025-10-20"  # New tag to simulate drift
   }
 }
 
