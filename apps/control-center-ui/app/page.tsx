@@ -37,42 +37,89 @@ export default function Home() {
           </a>
         </div>
 
-        {/* Módulos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <a 
-            href="/dashboards"
-            className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
-          >
-            <div className="text-4xl mb-3">📊</div>
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">Dashboards</h2>
-            <p className="text-gray-600">
-              Visualización de métricas, DRIFT y Pipelines
-            </p>
-          </a>
-          <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-            <div className="text-4xl mb-3">🚀</div>
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">Vibe Coding</h2>
-            <p className="text-gray-600">
-              Generación de proyectos completos desde lenguaje natural
-            </p>
+        {/* Módulos Principales */}
+        <div className="mb-8">
+          <h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="text-blue-600">🎯</span>
+            Observabilidad & Analytics
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <a 
+              href="/dashboards"
+              className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="text-4xl mb-3">📊</div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">Dashboards</h2>
+              <p className="text-gray-600 text-sm">
+                Visualización de métricas, DRIFT y Pipelines
+              </p>
+            </a>
+            
+            <a 
+              href="/sre-agent"
+              className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-blue-200 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-4xl">🛡️</div>
+                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  AZURE MCP
+                </span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">SRE Agent</h2>
+              <p className="text-gray-700 text-sm mb-3">
+                Site Reliability Engineering con Azure AI
+              </p>
+              <div className="space-y-1 text-xs text-gray-600">
+                <div className="flex items-center gap-1">
+                  <span className="text-green-600">✓</span>
+                  <span>Incident Response & Root Cause Analysis</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-green-600">✓</span>
+                  <span>Observability & Performance Insights</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-green-600">✓</span>
+                  <span>Reliability Recommendations</span>
+                </div>
+              </div>
+            </a>
+            
+            <a 
+              href="/finops"
+              className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="text-4xl mb-3">�</div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">FinOps</h2>
+              <p className="text-gray-600 text-sm">
+                Analytics y optimización de costos Cloud
+              </p>
+            </a>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-            <div className="text-4xl mb-3">📚</div>
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">Knowledge Portal</h2>
-            <p className="text-gray-600">
-              Asistente RAG con documentación técnica
-            </p>
+        </div>
+
+        {/* Módulos de Desarrollo */}
+        <div className="mb-12">
+          <h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+            <span className="text-purple-600">⚡</span>
+            Desarrollo & Automatización
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
+              <div className="text-4xl mb-3">🚀</div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">Vibe Coding</h2>
+              <p className="text-gray-600 text-sm">
+                Generación de proyectos completos desde lenguaje natural
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
+              <div className="text-4xl mb-3">�</div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">Knowledge Portal</h2>
+              <p className="text-gray-600 text-sm">
+                Asistente RAG con documentación técnica
+              </p>
+            </div>
           </div>
-          <a 
-            href="/finops"
-            className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all border border-gray-100 cursor-pointer transform hover:-translate-y-1"
-          >
-            <div className="text-4xl mb-3">💰</div>
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">FinOps</h2>
-            <p className="text-gray-600">
-              Analytics y optimización de costos
-            </p>
-          </a>
         </div>
 
         {/* Footer con Copyright */}
