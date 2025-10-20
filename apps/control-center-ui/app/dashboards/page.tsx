@@ -323,6 +323,10 @@ Requires code update and owner approval.`;
 
       console.log('📝 Creando Pull Request...');
 
+      // Timeout de 30 segundos para evitar colgarse indefinidamente
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const prResponse = await fetch('/api/drift/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,7 +337,15 @@ Requires code update and owner approval.`;
           prTitle,
           prDescription,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+      
+      if (!prResponse.ok) {
+        const errorData = await prResponse.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${prResponse.status}`);
+      }
 
       const prResult = await prResponse.json();
 
@@ -361,8 +373,16 @@ Requires code update and owner approval.`;
       }
     } catch (err: any) {
       console.error('Error al importar cambios:', err);
+      
+      let errorMsg = err.message;
+      if (err.name === 'AbortError') {
+        errorMsg = 'Timeout: La creación del PR tardó más de 30 segundos.\n' +
+                   'Verifica si el PR se creó en GitHub (gh pr list).\n' +
+                   'Si no, revisa los logs del backend.';
+      }
+      
       alert(
-        `❌ Error al importar cambios manuales:\n\n${err.message}\n\n` +
+        `❌ Error al importar cambios manuales:\n\n${errorMsg}\n\n` +
         `Puedes hacerlo manualmente:\n` +
         `1. cd terraform/hub\n` +
         `2. terragrunt refresh\n` +

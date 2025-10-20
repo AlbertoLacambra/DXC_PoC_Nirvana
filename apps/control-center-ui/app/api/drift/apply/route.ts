@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import path from 'path';
 
 const execFileAsync = promisify(execFile);
 
@@ -150,25 +149,35 @@ export async function POST(request: NextRequest) {
       
       try {
         // 1. Crear nueva rama
+        console.log(`🌿 Creando rama: ${branchName}`);
         await executeCommand(wslRepoPath, `git checkout -b ${branchName}`);
+        console.log('✅ Rama creada');
         
         // 2. Hacer commit de los cambios
+        console.log('📦 Haciendo commit...');
         await executeCommand(wslRepoPath, `git add .`);
         await executeCommand(wslRepoPath, `git commit -m "${commitMessage}"`);
+        console.log('✅ Commit realizado');
         
         // 3. Push de la rama
+        console.log('⬆️ Pushing rama...');
         await executeCommand(wslRepoPath, `git push origin ${branchName}`);
+        console.log('✅ Push completado');
         
         // 4. Crear archivo temporal con el body del PR (evita problemas con textos largos)
-        const prBodyFile = path.join(wslRepoPath, '.pr-body-temp.md');
+        console.log('📄 Creando archivo temporal del PR...');
+        const prBodyFile = '.pr-body-temp.md';  // Usar ruta relativa en el repo
         const escapedPrDesc = prDescription.replace(/"/g, '\\"').replace(/`/g, '\\`').replace(/\$/g, '\\$');
         await executeCommand(wslRepoPath, `echo "${escapedPrDesc}" > '${prBodyFile}'`);
+        console.log('✅ Archivo temporal creado');
         
         // 5. Crear Pull Request usando GitHub CLI con archivo
+        console.log('🚀 Creando PR en GitHub...');
         const prResult = await executeCommand(
           wslRepoPath, 
           `gh pr create --title "${prTitle}" --body-file '${prBodyFile}' --base master --head ${branchName}`
         );
+        console.log('✅ PR creado exitosamente');
         
         // Limpiar archivo temporal
         try {
