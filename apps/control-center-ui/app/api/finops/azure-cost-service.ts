@@ -328,7 +328,19 @@ export async function getCostTrend(subscriptionId?: string): Promise<FOCUSCostTr
 }
 
 /**
- * Datos simulados para desarrollo/testing
+ * Datos simulados para desarrollo/testing/PoC
+ * 
+ * NOTA: Actualmente se usan estos datos simulados porque:
+ * 1. Az CLI extension 'costmanagement' v1.0.0 solo soporta 'export', no 'query' en tiempo real
+ * 2. Para datos reales necesitarías usar Azure Cost Management REST API directamente
+ * 3. Los datos simulados son perfectos para PoC/demos con consistencia y rapidez
+ * 
+ * Para habilitar datos reales:
+ * - Opción 1: Implementar llamadas directas a Cost Management REST API
+ * - Opción 2: Usar Azure Portal Export + procesamiento de CSV
+ * - Opción 3: Integrar con Azure Cost Management Power BI Connector
+ * 
+ * Estructura de datos FOCUS-compliant, lista para reemplazar con datos reales
  */
 function getSimulatedCosts(): FOCUSCostSummary {
   const now = new Date();

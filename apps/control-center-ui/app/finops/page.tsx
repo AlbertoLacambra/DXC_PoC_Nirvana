@@ -209,7 +209,7 @@ function OverviewTab({ loading, data }: { loading: boolean; data: any }) {
             <p className="text-purple-100 mb-4">
               Optimización continua de costos y recursos cloud basada en FOCUS y FinOps Toolkit
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
               <a 
                 href="https://focus.finops.org/" 
                 target="_blank"
@@ -224,6 +224,9 @@ function OverviewTab({ loading, data }: { loading: boolean; data: any }) {
               >
                 🔧 FinOps Toolkit
               </a>
+              <div className="px-3 py-1 bg-yellow-400 bg-opacity-90 text-yellow-900 rounded-full text-xs font-bold">
+                🧪 DEMO DATA
+              </div>
             </div>
           </div>
           <div className="text-6xl">💰</div>
