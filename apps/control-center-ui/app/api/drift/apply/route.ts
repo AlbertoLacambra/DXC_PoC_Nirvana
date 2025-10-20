@@ -9,6 +9,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, driftedResources } = body;
 
+    if (action === 'detect-drift-type') {
+      // Detectar el tipo de drift (código adelantado vs cambio manual en Azure)
+      const driftType = await detectDriftType(driftedResources);
+      
+      return NextResponse.json({
+        success: true,
+        driftType,
+      });
+    }
+
     if (action === 'analyze') {
       // Analizar el drift y generar recomendaciones
       const recommendations = generateRecommendations(driftedResources);
@@ -245,4 +255,84 @@ function generateOverallRecommendation(risk: string, actions: any[]): string {
   }
 
   return recommendation;
+}
+
+async function detectDriftType(driftedResources: any[]): Promise<{
+  type: 'code-ahead' | 'manual-change' | 'mixed';
+  scenario: string;
+  recommendedAction: 'apply-only' | 'create-pr' | 'manual-review';
+  explanation: string;
+  confidence: 'high' | 'medium' | 'low';
+}> {
+  // Analizar los cambios para determinar el tipo de drift
+  
+  // HEURÍSTICA: Si todos los cambios son UPDATES con tags/attributes nuevos,
+  // probablemente el código está adelantado (Escenario 1)
+  const allUpdates = driftedResources.every(r => 
+    r.action.includes('updated') || r.action.includes('update')
+  );
+  
+  const hasTagChanges = driftedResources.some(r => 
+    r.changes?.some((change: string) => 
+      change.toLowerCase().includes('tags') || 
+      change.toLowerCase().includes('tag.')
+    )
+  );
+  
+  const hasOnlyAdditions = driftedResources.every(r => 
+    r.changes?.every((change: string) => 
+      change.includes('+ ') || change.includes('~') || !change.includes('- ')
+    )
+  );
+  
+  // ESCENARIO 1: Código adelantado (PR mergeado pero no aplicado)
+  if (allUpdates && hasTagChanges && hasOnlyAdditions) {
+    return {
+      type: 'code-ahead',
+      scenario: '📝 Código adelantado - PR mergeado pero no aplicado',
+      recommendedAction: 'apply-only',
+      explanation: 
+        'El código en master tiene cambios (probablemente de un PR reciente) que aún NO están aplicados en Azure. ' +
+        'La solución es ejecutar "terragrunt apply" para sincronizar la infraestructura con el código.',
+      confidence: 'high',
+    };
+  }
+  
+  // ESCENARIO 2: Cambio manual en Azure (alguien modificó el portal)
+  // Si hay deletions (-) o cambios que no son solo adiciones
+  const hasDeletions = driftedResources.some(r => 
+    r.changes?.some((change: string) => change.trim().startsWith('- '))
+  );
+  
+  const hasNonTagChanges = driftedResources.some(r => 
+    r.changes?.some((change: string) => 
+      !change.toLowerCase().includes('tags') && 
+      !change.toLowerCase().includes('tag.')
+    )
+  );
+  
+  if (hasDeletions || hasNonTagChanges) {
+    return {
+      type: 'manual-change',
+      scenario: '⚠️ Cambio manual en Azure - Modificación fuera de Terraform',
+      recommendedAction: 'create-pr',
+      explanation: 
+        'Se detectaron cambios en Azure que NO están en el código de Terraform. ' +
+        'Alguien pudo haber modificado recursos manualmente en el portal de Azure. ' +
+        'La solución es crear un PR para actualizar el código Terraform, ' +
+        'que requiere revisión y aprobación del equipo antes de hacer merge.',
+      confidence: 'high',
+    };
+  }
+  
+  // ESCENARIO MIXTO: No está claro
+  return {
+    type: 'mixed',
+    scenario: '🤔 Escenario mixto o complejo',
+    recommendedAction: 'manual-review',
+    explanation: 
+      'Los cambios detectados no se ajustan claramente a un patrón conocido. ' +
+      'Se recomienda revisión manual del plan de Terraform para determinar la causa del drift.',
+    confidence: 'low',
+  };
 }

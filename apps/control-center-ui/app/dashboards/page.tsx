@@ -110,6 +110,7 @@ function DriftDashboard() {
   const [expandedResources, setExpandedResources] = useState<Set<number>>(new Set());
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [recommendations, setRecommendations] = useState<any>(null);
+  const [driftType, setDriftType] = useState<any>(null); // NUEVO: tipo de drift detectado
   const [applyingFix, setApplyingFix] = useState(false);
   const [prResult, setPrResult] = useState<any>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -148,7 +149,24 @@ function DriftDashboard() {
     try {
       setApplyingFix(true);
       
-      // Obtener recomendaciones
+      // PASO 1: Detectar el tipo de drift
+      const driftTypeResponse = await fetch('/api/drift/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'detect-drift-type',
+          driftedResources: driftData.driftedResources,
+        }),
+      });
+
+      if (!driftTypeResponse.ok) {
+        throw new Error('Error al detectar tipo de drift');
+      }
+
+      const driftTypeData = await driftTypeResponse.json();
+      setDriftType(driftTypeData.driftType);
+      
+      // PASO 2: Obtener recomendaciones
       const response = await fetch('/api/drift/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -174,25 +192,115 @@ function DriftDashboard() {
   };
 
   const handleConfirmApply = async () => {
+    // Ejecutar la acción apropiada según el tipo de drift detectado
+    if (!driftType) {
+      alert('❌ Error: No se pudo determinar el tipo de drift');
+      return;
+    }
+
+    if (driftType.recommendedAction === 'apply-only') {
+      await handleApplyOnly();
+    } else if (driftType.recommendedAction === 'create-pr') {
+      await handleCreatePRWorkflow();
+    } else {
+      alert('⚠️ Escenario complejo detectado. Se recomienda revisión manual del plan de Terraform.');
+      setShowApplyModal(false);
+    }
+  };
+
+  const handleApplyOnly = async () => {
+    // ESCENARIO 1: Código adelantado - Solo ejecutar apply
     try {
       setApplyingFix(true);
       
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const branchName = `drift-fix-${timestamp}`;
-      const commitMessage = `fix: Apply Terraform drift corrections - ${driftData.driftedResources.length} resource(s)`;
-      const prTitle = `🔧 Drift Correction: ${driftData.driftedResources.length} Resource(s)`;
+      // Preguntar confirmación
+      const shouldApply = confirm(
+        `🎯 Sincronizar Infraestructura con Código\n\n` +
+        `${driftType.explanation}\n\n` +
+        `Recursos afectados: ${driftData.driftedResources.length}\n` +
+        `Nivel de riesgo: ${recommendations.risk.toUpperCase()}\n\n` +
+        `¿Deseas SINCRONIZAR ejecutando "terragrunt apply -auto-approve"?\n\n` +
+        `⚠️ Los cambios se aplicarán INMEDIATAMENTE en Azure.`
+      );
       
-      const prDescription = `## 🎯 Drift Detection & Correction
+      if (!shouldApply) {
+        setApplyingFix(false);
+        setShowApplyModal(false);
+        return;
+      }
+
+      // Ejecutar terragrunt apply directamente
+      alert('🚀 Ejecutando Terragrunt Apply... Esto puede tardar un minuto.');
+      
+      const applyResponse = await fetch('/api/drift/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'apply-terraform' }),
+      });
+      
+      const applyResult = await applyResponse.json();
+          
+      if (applyResult.success) {
+        setShowApplyModal(false);
+        alert(
+          `✅ Terragrunt Apply completado exitosamente!\n\n` +
+          `Los cambios se han aplicado a la infraestructura.\n` +
+          `El dashboard se actualizará en 2 segundos para mostrar "0 DRIFT".`
+        );
+        
+        // Refrescar después de 2 segundos
+        setTimeout(() => fetchDriftData(), 2000);
+      } else {
+        throw new Error(applyResult.error || 'Error al ejecutar apply');
+      }
+    } catch (err: any) {
+      console.error('Error al aplicar correcciones:', err);
+      alert(`❌ Error: ${err.message}\n\nPuedes aplicar los cambios manualmente con: terragrunt apply`);
+    } finally {
+      setApplyingFix(false);
+    }
+  };
+
+  const handleCreatePRWorkflow = async () => {
+    // ESCENARIO 2: Cambio manual en Azure - Crear PR para revisión
+    try {
+      setApplyingFix(true);
+      
+      // Confirmar creación de PR
+      const shouldCreatePR = confirm(
+        `⚠️ Cambio Manual Detectado en Azure\n\n` +
+        `${driftType.explanation}\n\n` +
+        `Se creará un Pull Request para:\n` +
+        `1. Actualizar el código Terraform con los cambios de Azure\n` +
+        `2. Permitir revisión del equipo\n` +
+        `3. Documentar los cambios\n\n` +
+        `Después del merge, podrás aplicar los cambios.\n\n` +
+        `¿Continuar?`
+      );
+      
+      if (!shouldCreatePR) {
+        setApplyingFix(false);
+        setShowApplyModal(false);
+        return;
+      }
+
+      // Crear PR con terraform refresh para actualizar el state
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const branchName = `drift-manual-change-${timestamp}`;
+      const commitMessage = `fix: Sync Terraform code with manual Azure changes - ${driftData.driftedResources.length} resource(s)`;
+      const prTitle = `⚠️ Manual Change Detection: ${driftData.driftedResources.length} Resource(s)`;
+      
+      const prDescription = `## ⚠️ Manual Change Detected in Azure
       
 **Detected:** ${new Date().toLocaleString()}
-**Resources with Drift:** ${driftData.driftedResources.length}
+**Resources Modified:** ${driftData.driftedResources.length}
+**Scenario:** ${driftType.scenario}
+**Confidence:** ${driftType.confidence.toUpperCase()}
 
-### 📋 Summary
-${recommendations.summary}
+### 📋 Analysis
+${driftType.explanation}
 
-**Risk Level:** \`${recommendations.risk.toUpperCase()}\`
-
-### 🔄 Changes to Apply
+### 🔄 Changes Detected
 
 ${recommendations.actions.map((action: any, idx: number) => `
 #### ${idx + 1}. ${action.resource}
@@ -209,15 +317,20 @@ ${action.changes.slice(0, 5).join('\n')}
 **Recommendation:** ${action.recommendation}
 `).join('\n---\n')}
 
-### ✅ Overall Recommendation
-${recommendations.recommendation}
+### ✅ Next Steps
+1. **Review this PR carefully** - Someone made manual changes in Azure Portal
+2. **Verify the changes** are intentional and safe
+3. **Approve and Merge** if changes should be kept in code
+4. **After merge:** Run \`terragrunt apply\` to ensure state is synchronized
 
 ---
 *This PR was automatically generated by DXC Cloud Mind - Nirvana Dashboard*
-*Please review carefully before merging, especially for high-risk changes.*
+*⚠️ IMPORTANT: Manual changes bypass IaC controls. Please review with the team.*
 `;
 
-      const response = await fetch('/api/drift/apply', {
+      alert('📝 Creando Pull Request para revisión del equipo...');
+
+      const prResponse = await fetch('/api/drift/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,67 +342,26 @@ ${recommendations.recommendation}
         }),
       });
 
-      const result = await response.json();
+      const prResult = await prResponse.json();
 
-      if (result.success) {
-        setPrResult(result);
+      if (prResult.success) {
         setShowApplyModal(false);
-        
-        // Preguntar si quiere aplicar los cambios automáticamente
-        const shouldApply = confirm(
+        setPrResult(prResult);
+        alert(
           `✅ Pull Request creada exitosamente!\n\n` +
-          `Branch: ${result.branch}\n` +
-          `URL: ${result.prUrl || 'Ver en GitHub'}\n\n` +
-          `¿Deseas aplicar los cambios a la infraestructura AHORA con Terragrunt Apply?\n\n` +
-          `⚠️ Esto ejecutará "terragrunt apply -auto-approve" y los cambios se aplicarán inmediatamente en Azure.`
+          `Branch: ${prResult.branch}\n` +
+          `URL: ${prResult.prUrl || 'Ver en GitHub'}\n\n` +
+          `⚠️ Este PR requiere REVISIÓN del equipo antes de merge.\n` +
+          `Una vez aprobado y mergeado, podrás aplicar los cambios con Terragrunt Apply.`
         );
         
-        if (shouldApply) {
-          // Ejecutar terragrunt apply
-          try {
-            alert('🚀 Ejecutando Terragrunt Apply... Esto puede tardar un minuto.');
-            
-            const applyResponse = await fetch('/api/drift/apply', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'apply-terraform' }),
-            });
-            
-            const applyResult = await applyResponse.json();
-            
-            if (applyResult.success) {
-              alert(
-                `✅ Terragrunt Apply completado exitosamente!\n\n` +
-                `Los cambios se han aplicado a la infraestructura.\n` +
-                `El dashboard se actualizará en 2 segundos para mostrar "0 DRIFT".`
-              );
-              
-              // Refrescar después de 2 segundos
-              setTimeout(() => fetchDriftData(), 2000);
-            } else {
-              throw new Error(applyResult.error || 'Error al ejecutar apply');
-            }
-          } catch (applyErr: any) {
-            alert(
-              `❌ Error al ejecutar Terragrunt Apply:\n\n${applyErr.message}\n\n` +
-              `El PR se creó correctamente pero no se pudieron aplicar los cambios.\n` +
-              `Puedes aplicarlos manualmente con: terragrunt apply`
-            );
-          }
-        } else {
-          // Solo refrescar datos sin aplicar
-          const autoRefreshMsg = autoRefresh 
-            ? '\n\n⏱️ El dashboard se actualizará automáticamente en 1 minuto.'
-            : '\n\n💡 Tip: Activa el auto-refresh para ver los cambios automáticamente.';
-          
-          alert(`✅ PR creado. Puedes revisar y hacer merge manualmente.${autoRefreshMsg}`);
-          setTimeout(() => fetchDriftData(), 2000);
-        }
+        // Refrescar datos
+        setTimeout(() => fetchDriftData(), 2000);
       } else {
-        throw new Error(result.error || 'Error al crear Pull Request');
+        throw new Error(prResult.error || 'Error al crear PR');
       }
     } catch (err: any) {
-      console.error('Error al aplicar correcciones:', err);
+      console.error('Error al crear PR:', err);
       alert(`❌ Error: ${err.message}`);
     } finally {
       setApplyingFix(false);
@@ -515,7 +587,7 @@ ${recommendations.recommendation}
         </div>
       </div>
 
-      {/* Modal de Confirmación de Aplicar Correcciones */}
+      {/* Modal de Confirmación para Sincronizar Infraestructura */}
       {showApplyModal && recommendations && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -527,9 +599,12 @@ ${recommendations.recommendation}
               'bg-green-50 border-green-200'
             }`}>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                🔧 Aplicar Correcciones de DRIFT
+                🎯 Sincronizar Infraestructura con Código
               </h2>
-              <p className="text-sm text-gray-600">{recommendations.summary}</p>
+              <p className="text-sm text-gray-600">
+                El código en master tiene cambios que no están aplicados en Azure. 
+                Puedes sincronizar ejecutando <code className="bg-gray-100 px-2 py-1 rounded">terragrunt apply</code>.
+              </p>
               <div className={`mt-3 inline-block px-3 py-1 rounded text-sm font-semibold ${
                 recommendations.risk === 'critical' ? 'bg-red-200 text-red-800' :
                 recommendations.risk === 'high' ? 'bg-orange-200 text-orange-800' :
@@ -539,6 +614,56 @@ ${recommendations.recommendation}
                 Nivel de Riesgo: {recommendations.risk.toUpperCase()}
               </div>
             </div>
+
+            {/* Banner de Escenario Detectado */}
+            {driftType && (
+              <div className={`px-6 py-4 border-b ${
+                driftType.type === 'code-ahead' ? 'bg-blue-50 border-blue-200' :
+                driftType.type === 'manual-change' ? 'bg-orange-50 border-orange-200' :
+                'bg-gray-50 border-gray-200'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">
+                    {driftType.type === 'code-ahead' ? '📝' :
+                     driftType.type === 'manual-change' ? '⚠️' : '🤔'}
+                  </span>
+                  <div className="flex-1">
+                    <h3 className={`font-semibold mb-1 ${
+                      driftType.type === 'code-ahead' ? 'text-blue-800' :
+                      driftType.type === 'manual-change' ? 'text-orange-800' :
+                      'text-gray-800'
+                    }`}>
+                      {driftType.scenario}
+                    </h3>
+                    <p className={`text-sm ${
+                      driftType.type === 'code-ahead' ? 'text-blue-700' :
+                      driftType.type === 'manual-change' ? 'text-orange-700' :
+                      'text-gray-700'
+                    }`}>
+                      {driftType.explanation}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                        driftType.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                        driftType.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        Confianza: {driftType.confidence.toUpperCase()}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                        driftType.recommendedAction === 'apply-only' ? 'bg-blue-100 text-blue-700' :
+                        driftType.recommendedAction === 'create-pr' ? 'bg-orange-100 text-orange-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        Acción: {driftType.recommendedAction === 'apply-only' ? '🚀 Apply Directo' :
+                                 driftType.recommendedAction === 'create-pr' ? '📝 Crear PR' :
+                                 '🔍 Revisión Manual'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
@@ -597,15 +722,25 @@ ${recommendations.recommendation}
                 ))}
               </div>
 
-              {/* Información del PR */}
-              <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <h3 className="font-semibold text-purple-800 mb-2">📝 Proceso de Pull Request:</h3>
-                <ol className="text-sm text-purple-700 space-y-1 list-decimal list-inside">
-                  <li>Se creará una nueva rama con los cambios de Terraform</li>
-                  <li>Se generará un commit con la descripción detallada</li>
-                  <li>Se abrirá un Pull Request automáticamente en GitHub</li>
-                  <li>El owner del repositorio deberá revisar y aprobar los cambios</li>
-                  <li>Una vez aprobado, se puede hacer merge para aplicar las correcciones</li>
+              {/* Información del proceso */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-semibold text-blue-800 mb-2">� Proceso de Sincronización:</h3>
+                <ol className="text-sm text-blue-700 space-y-2 list-decimal list-inside">
+                  <li>
+                    <strong>Estado actual:</strong> El código en <code className="bg-white px-2 py-0.5 rounded">master</code> tiene cambios que NO están en Azure
+                  </li>
+                  <li>
+                    <strong>Acción:</strong> Se ejecutará <code className="bg-white px-2 py-0.5 rounded">terragrunt apply -auto-approve</code> en WSL
+                  </li>
+                  <li>
+                    <strong>Resultado:</strong> La infraestructura en Azure se actualizará para coincidir con el código
+                  </li>
+                  <li>
+                    <strong>Tiempo estimado:</strong> 1-2 minutos (depende de los cambios)
+                  </li>
+                  <li>
+                    <strong>Verificación:</strong> El dashboard se actualizará automáticamente mostrando "0 DRIFT"
+                  </li>
                 </ol>
               </div>
             </div>
@@ -625,16 +760,26 @@ ${recommendations.recommendation}
               <button
                 onClick={handleConfirmApply}
                 disabled={applyingFix}
-                className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:bg-gray-400 flex items-center justify-center gap-2"
+                className={`flex-1 text-white py-3 rounded-lg transition-colors font-semibold disabled:bg-gray-400 flex items-center justify-center gap-2 ${
+                  driftType?.recommendedAction === 'apply-only' ? 'bg-blue-600 hover:bg-blue-700' :
+                  driftType?.recommendedAction === 'create-pr' ? 'bg-orange-600 hover:bg-orange-700' :
+                  'bg-gray-600 hover:bg-gray-700'
+                }`}
               >
                 {applyingFix ? (
                   <>
                     <span className="animate-spin">⏳</span>
-                    Creando Pull Request...
+                    {driftType?.recommendedAction === 'create-pr' ? 'Creando PR...' : 'Aplicando cambios...'}
                   </>
                 ) : (
                   <>
-                    ✅ Confirmar y Crear Pull Request
+                    {driftType?.recommendedAction === 'apply-only' ? (
+                      <>🚀 Sincronizar Infraestructura (Terragrunt Apply)</>
+                    ) : driftType?.recommendedAction === 'create-pr' ? (
+                      <>📝 Crear Pull Request para Revisión</>
+                    ) : (
+                      <>🔍 Continuar con Revisión Manual</>
+                    )}
                   </>
                 )}
               </button>
@@ -657,7 +802,7 @@ ${recommendations.recommendation}
           disabled={loading || applyingFix || !driftData?.driftedResources?.length}
           className="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:bg-gray-400"
         >
-          {applyingFix ? '⏳ Procesando...' : '✅ Aplicar Correcciones'}
+          {applyingFix ? '⏳ Procesando...' : '🎯 Sincronizar Infraestructura'}
         </button>
         <button className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold">
           📥 Exportar Reporte
