@@ -112,10 +112,20 @@ function DriftDashboard() {
   const [recommendations, setRecommendations] = useState<any>(null);
   const [applyingFix, setApplyingFix] = useState(false);
   const [prResult, setPrResult] = useState<any>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     fetchDriftData();
-  }, []);
+    
+    // Auto-refresh cada 60 segundos si está habilitado
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchDriftData();
+      }, 60000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
 
   const toggleResourceDetails = (index: number) => {
     setExpandedResources(prev => {
@@ -223,11 +233,15 @@ ${recommendations.recommendation}
 
       if (result.success) {
         setPrResult(result);
-        alert(`✅ Pull Request creada exitosamente!\n\nBranch: ${result.branch}\nURL: ${result.prUrl || 'Ver en GitHub'}`);
+        const autoRefreshMsg = autoRefresh 
+          ? '\n\n⏱️ El dashboard se actualizará automáticamente en 1 minuto.\nO puedes hacer click en "🔄 Ejecutar Drift Detection" para actualizar inmediatamente después del merge.'
+          : '\n\n💡 Tip: Activa el auto-refresh para ver los cambios automáticamente después del merge.';
+        
+        alert(`✅ Pull Request creada exitosamente!\n\nBranch: ${result.branch}\nURL: ${result.prUrl || 'Ver en GitHub'}${autoRefreshMsg}`);
         setShowApplyModal(false);
         
-        // Refrescar datos después de crear PR
-        fetchDriftData();
+        // Refrescar inmediatamente para mostrar el estado actual
+        setTimeout(() => fetchDriftData(), 2000);
       } else {
         throw new Error(result.error || 'Error al crear Pull Request');
       }
@@ -312,11 +326,28 @@ ${recommendations.recommendation}
             Estado de sincronización entre infraestructura y código Terraform
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-500">Última comprobación</p>
-          <p className="text-sm font-mono text-gray-700">
-            {driftData.lastCheck ? new Date(driftData.lastCheck).toLocaleString('es-ES') : 'N/A'}
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Auto-refresh (1 min)</label>
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                autoRefresh ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  autoRefresh ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Última comprobación</p>
+            <p className="text-sm font-mono text-gray-700">
+              {driftData.lastCheck ? new Date(driftData.lastCheck).toLocaleString('es-ES') : 'N/A'}
+            </p>
+          </div>
         </div>
       </div>
 
