@@ -25,7 +25,7 @@ from datetime import datetime
 # Third-party imports
 try:
     from openai import AzureOpenAI
-    from langchain.text_splitter import (
+    from langchain_text_splitters import (
         RecursiveCharacterTextSplitter,
         Language,
         MarkdownTextSplitter
@@ -36,7 +36,7 @@ try:
     from tqdm import tqdm
 except ImportError as e:
     print(f"Missing required package: {e}")
-    print("Install with: pip install openai langchain psycopg2-binary gitpython tqdm")
+    print("Install with: pip install openai langchain-text-splitters psycopg2-binary gitpython tqdm")
     sys.exit(1)
 
 
