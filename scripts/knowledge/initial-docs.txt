@@ -1,0 +1,31 @@
+# Knowledge Portal - Initial Documentation Files
+# These files will be indexed first to populate the knowledge base
+
+# Architecture documentation
+docs/architecture/01-hub-spoke-design.md
+docs/architecture/02-technology-stack.md
+docs/architecture/ai-rag-system.md
+docs/architecture/deployed-resources.md
+docs/architecture/adr.md
+
+# Core project documentation
+docs/index.md
+docs/PRODUCT_VISION.md
+docs/IMPLEMENTATION_PLAN.md
+docs/OPTIMIZATION_PROPOSAL.md
+docs/status.md
+
+# Guides
+docs/guides/quick-start.md
+docs/guides/quick-start-app.md
+docs/guides/chatbot-integration.md
+docs/guides/migration.md
+docs/guides/dify-knowledge-setup.md
+
+# Reference
+docs/reference/terraform-modules.md
+docs/reference/github-actions.md
+docs/reference/links.md
+
+# Use cases
+docs/use-cases/README.md

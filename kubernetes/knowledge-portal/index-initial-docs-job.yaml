@@ -1,0 +1,156 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-indexing-script
+  namespace: cloudmind
+data:
+  initial-docs.txt: |
+    # Architecture documentation
+    docs/architecture/01-hub-spoke-design.md
+    docs/architecture/02-technology-stack.md
+    docs/architecture/ai-rag-system.md
+    docs/architecture/deployed-resources.md
+    docs/architecture/adr.md
+    
+    # Core project documentation
+    docs/index.md
+    docs/PRODUCT_VISION.md
+    docs/IMPLEMENTATION_PLAN.md
+    docs/OPTIMIZATION_PROPOSAL.md
+    docs/status.md
+    
+    # Guides
+    docs/guides/quick-start.md
+    docs/guides/quick-start-app.md
+    docs/guides/chatbot-integration.md
+    docs/guides/migration.md
+    docs/guides/dify-knowledge-setup.md
+    
+    # Reference
+    docs/reference/terraform-modules.md
+    docs/reference/github-actions.md
+    docs/reference/links.md
+    
+    # Use cases
+    docs/use-cases/README.md
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: index-initial-docs
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: clone-repo
+        image: alpine/git:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Cloning repository..."
+          git clone https://github.com/AlbertoLacambra/dify-azure-private-deployment.git /workspace
+          cd /workspace
+          echo "Repository cloned successfully"
+          ls -la
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+      containers:
+      - name: index-docs
+        image: python:3.11-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "============================================"
+          echo "🧠 Knowledge Portal - Initial Indexing"
+          echo "============================================"
+          echo ""
+          
+          cd /workspace
+          
+          echo "Installing dependencies..."
+          pip install --quiet openai langchain psycopg2-binary gitpython tqdm
+          echo "✓ Dependencies installed"
+          echo ""
+          
+          echo "Processing documents..."
+          python3 scripts/knowledge/process-knowledge-documents.py --files /config/initial-docs.txt
+          
+          echo ""
+          echo "Verifying indexing..."
+          python3 scripts/knowledge/verify-knowledge-sync.py
+          
+          echo ""
+          echo "============================================"
+          echo "✅ Initial indexing completed!"
+          echo "============================================"
+        env:
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_BASE
+        - name: AZURE_OPENAI_DEPLOYMENT
+          value: "text-embedding-3-large"
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: POSTGRES_PORT
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: port
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_DB
+          value: "nirvana_knowledge"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        - name: config
+          mountPath: /config
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+      volumes:
+      - name: workspace
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: knowledge-indexing-script

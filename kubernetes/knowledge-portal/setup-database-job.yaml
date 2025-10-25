@@ -1,0 +1,300 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-db-setup-sql
+  namespace: cloudmind
+data:
+  setup-knowledge-db.sql: |
+    -- ============================================================================
+    -- Knowledge Portal Database Schema
+    -- ============================================================================
+    
+    -- Enable required extensions
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    
+    -- ============================================================================
+    -- Table: knowledge_chunks
+    -- ============================================================================
+    CREATE TABLE IF NOT EXISTS knowledge_chunks (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        content TEXT NOT NULL,
+        embedding vector(1536),
+        content_hash VARCHAR(64) NOT NULL UNIQUE,
+        
+        -- Metadata
+        source_type VARCHAR(50) NOT NULL,
+        file_path TEXT NOT NULL,
+        category VARCHAR(100),
+        tags TEXT[],
+        
+        -- Git metadata
+        git_commit_hash VARCHAR(40),
+        git_author VARCHAR(255),
+        git_commit_date TIMESTAMP WITH TIME ZONE,
+        git_branch VARCHAR(255),
+        
+        -- Quality metrics
+        chunk_index INTEGER NOT NULL,
+        total_chunks INTEGER NOT NULL,
+        quality_score FLOAT,
+        
+        -- Timestamps
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        
+        -- Constraints
+        CONSTRAINT valid_quality_score CHECK (quality_score >= 0 AND quality_score <= 1)
+    );
+    
+    -- ============================================================================
+    -- Table: source_documents
+    -- ============================================================================
+    CREATE TABLE IF NOT EXISTS source_documents (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        file_path TEXT NOT NULL UNIQUE,
+        file_type VARCHAR(50) NOT NULL,
+        file_size BIGINT,
+        content_hash VARCHAR(64) NOT NULL,
+        
+        -- Sync metadata
+        sync_status VARCHAR(20) DEFAULT 'pending',
+        last_synced TIMESTAMP WITH TIME ZONE,
+        sync_error TEXT,
+        
+        -- Git metadata
+        git_commit_hash VARCHAR(40),
+        git_last_modified TIMESTAMP WITH TIME ZONE,
+        
+        -- Timestamps
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        
+        CONSTRAINT valid_sync_status CHECK (sync_status IN ('pending', 'synced', 'failed'))
+    );
+    
+    -- ============================================================================
+    -- Table: query_logs
+    -- ============================================================================
+    CREATE TABLE IF NOT EXISTS query_logs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        query_text TEXT NOT NULL,
+        query_embedding vector(1536),
+        
+        -- Results
+        top_chunks UUID[],
+        result_count INTEGER,
+        
+        -- Metadata
+        user_id VARCHAR(255),
+        session_id VARCHAR(255),
+        
+        -- Performance
+        response_time_ms INTEGER,
+        
+        -- Feedback
+        feedback_score INTEGER,
+        feedback_comment TEXT,
+        
+        -- Timestamp
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        
+        CONSTRAINT valid_feedback CHECK (feedback_score IS NULL OR (feedback_score >= 1 AND feedback_score <= 5))
+    );
+    
+    -- ============================================================================
+    -- Indexes
+    -- ============================================================================
+    
+    -- Vector similarity index for knowledge_chunks
+    CREATE INDEX IF NOT EXISTS idx_embedding ON knowledge_chunks 
+    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+    
+    -- Full-text search index
+    CREATE INDEX IF NOT EXISTS idx_content_fts ON knowledge_chunks 
+    USING gin (to_tsvector('english', content));
+    
+    -- Metadata indexes
+    CREATE INDEX IF NOT EXISTS idx_source_type ON knowledge_chunks(source_type);
+    CREATE INDEX IF NOT EXISTS idx_category ON knowledge_chunks(category);
+    CREATE INDEX IF NOT EXISTS idx_file_path ON knowledge_chunks(file_path);
+    CREATE INDEX IF NOT EXISTS idx_tags ON knowledge_chunks USING gin(tags);
+    CREATE INDEX IF NOT EXISTS idx_git_commit ON knowledge_chunks(git_commit_hash);
+    CREATE INDEX IF NOT EXISTS idx_created_at ON knowledge_chunks(created_at DESC);
+    
+    -- Source documents indexes
+    CREATE INDEX IF NOT EXISTS idx_sync_status ON source_documents(sync_status);
+    CREATE INDEX IF NOT EXISTS idx_last_synced ON source_documents(last_synced DESC);
+    
+    -- Query logs indexes
+    CREATE INDEX IF NOT EXISTS idx_query_created ON query_logs(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_query_user ON query_logs(user_id);
+    
+    -- ============================================================================
+    -- Triggers
+    -- ============================================================================
+    
+    -- Auto-update updated_at timestamp
+    CREATE OR REPLACE FUNCTION update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+    END;
+    $$ language 'plpgsql';
+    
+    CREATE TRIGGER update_knowledge_chunks_updated_at BEFORE UPDATE ON knowledge_chunks
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    
+    CREATE TRIGGER update_source_documents_updated_at BEFORE UPDATE ON source_documents
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    
+    -- ============================================================================
+    -- Views
+    -- ============================================================================
+    
+    -- Top quality chunks per category
+    CREATE OR REPLACE VIEW top_chunks AS
+    SELECT 
+        category,
+        COUNT(*) as chunk_count,
+        ROUND(AVG(quality_score)::numeric, 3) as avg_quality,
+        MAX(created_at) as last_updated
+    FROM knowledge_chunks
+    WHERE category IS NOT NULL
+    GROUP BY category
+    ORDER BY chunk_count DESC;
+    
+    -- Sync status summary
+    CREATE OR REPLACE VIEW sync_status_summary AS
+    SELECT 
+        sync_status,
+        COUNT(*) as document_count,
+        MAX(last_synced) as last_sync_time
+    FROM source_documents
+    GROUP BY sync_status;
+    
+    -- Category statistics
+    CREATE OR REPLACE VIEW category_statistics AS
+    SELECT 
+        kc.category,
+        COUNT(DISTINCT kc.file_path) as document_count,
+        COUNT(*) as chunk_count,
+        ROUND(AVG(kc.quality_score)::numeric, 3) as avg_quality_score,
+        MAX(kc.created_at) as last_indexed
+    FROM knowledge_chunks kc
+    WHERE kc.category IS NOT NULL
+    GROUP BY kc.category
+    ORDER BY chunk_count DESC;
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-knowledge-db
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: setup-db
+        image: postgres:16-alpine
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "============================================"
+          echo "Knowledge Portal - Database Setup"
+          echo "============================================"
+          echo ""
+          
+          echo "Step 1: Testing connection..."
+          psql "$DATABASE_URL" -c "SELECT version();" || {
+            echo "ERROR: Connection failed"
+            exit 1
+          }
+          echo "✓ Connection successful"
+          echo ""
+          
+          echo "Step 2: Checking if database exists..."
+          DB_EXISTS=$(psql "$DATABASE_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='nirvana_knowledge'")
+          
+          if [ "$DB_EXISTS" = "1" ]; then
+            echo "⚠ Database 'nirvana_knowledge' already exists"
+            echo "Skipping creation..."
+          else
+            echo "Step 3: Creating database..."
+            psql "$DATABASE_URL" -c "CREATE DATABASE nirvana_knowledge;" || {
+              echo "ERROR: Failed to create database"
+              exit 1
+            }
+            echo "✓ Database created"
+          fi
+          echo ""
+          
+          echo "Step 4: Applying schema..."
+          PGDATABASE=nirvana_knowledge psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER password=$POSTGRES_PASSWORD sslmode=require" -f /sql/setup-knowledge-db.sql || {
+            echo "ERROR: Failed to apply schema"
+            exit 1
+          }
+          echo "✓ Schema applied"
+          echo ""
+          
+          echo "Step 5: Verifying setup..."
+          PGDATABASE=nirvana_knowledge psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER password=$POSTGRES_PASSWORD sslmode=require" << 'EOF'
+          \echo '--- Extensions ---'
+          SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector', 'uuid-ossp');
+          
+          \echo ''
+          \echo '--- Tables ---'
+          SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
+          
+          \echo ''
+          \echo '--- Indexes ---'
+          SELECT COUNT(*) as index_count FROM pg_indexes WHERE schemaname = 'public';
+          EOF
+          
+          echo ""
+          echo "============================================"
+          echo "✅ Database setup completed successfully!"
+          echo "============================================"
+        env:
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: POSTGRES_PORT
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: port
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/postgres?sslmode=require"
+        volumeMounts:
+        - name: sql-scripts
+          mountPath: /sql
+      volumes:
+      - name: sql-scripts
+        configMap:
+          name: knowledge-db-setup-sql
