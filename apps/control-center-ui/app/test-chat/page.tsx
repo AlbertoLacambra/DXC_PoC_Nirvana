@@ -104,9 +104,9 @@ export default function TestChatPage() {
                 <p className="text-lg">👋 ¡Hola! Envía un mensaje para probar la integración.</p>
                 <p className="text-sm mt-2">Ejemplos:</p>
                 <ul className="text-sm mt-2 space-y-1">
-                  <li>• "¿Qué es Kubernetes?"</li>
-                  <li>• "Dame un ejemplo de código Python"</li>
-                  <li>• "Explica qué es FinOps"</li>
+                  <li>• &quot;¿Qué es Kubernetes?&quot;</li>
+                  <li>• &quot;Dame un ejemplo de código Python&quot;</li>
+                  <li>• &quot;Explica qué es FinOps&quot;</li>
                 </ul>
               </div>
             ) : (

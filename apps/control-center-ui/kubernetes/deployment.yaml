@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: control-center-ui
-        image: dxccloudmindx0sa6l.azurecr.io/control-center-ui:latest
+        image: dxccloudmindx0sa6l.azurecr.io/control-center-ui:1.9.1
         ports:
         - containerPort: 3000
           name: http

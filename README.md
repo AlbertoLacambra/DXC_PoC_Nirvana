@@ -132,6 +132,23 @@ Transform cloud operations through AI-driven automation, proactive governance, a
   - Needs `.terraform-docs.yml` configuration
   - Will auto-update README for modules
 
+### ✅ Control Center UI + Chatbot Integration
+
+- [x] **Next.js Application**
+  - Modern React app with Tailwind CSS
+  - Running on `localhost:3000`
+  - Responsive design with dark/light modes
+  
+- [x] **Dify Chatbot Integration**
+  - **Nirvana Tech Support Assistant** integrated
+  - Custom React component (`DifyChatButton.tsx`)
+  - Floating green button in bottom-right corner
+  - Powered by gpt-4o-mini (Azure OpenAI)
+  - WebApp approach (iframe embedding)
+  - Available on ALL pages globally
+  
+📖 **Full documentation**: See [`CHATBOT_INTEGRATION.md`](./CHATBOT_INTEGRATION.md)
+
 ### 📋 Planned
 
 - [ ] **Use Cases Implementation**

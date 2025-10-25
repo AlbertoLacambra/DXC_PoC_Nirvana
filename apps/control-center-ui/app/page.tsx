@@ -27,14 +27,25 @@ export default function Home() {
           </p>
         </div>
         
-        {/* Test Button */}
-        <div className="mb-12 text-center">
-          <a 
-            href="/test-chat"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg"
-          >
-            🧪 Probar Chat con Dify
-          </a>
+        {/* Integration Info */}
+        <div className="mb-12">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">💬</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  Chatbot Integrado - Nirvana Tech Support Assistant
+                </h3>
+                <p className="text-gray-700 mb-3">
+                  El chatbot flotante está disponible en <strong>todas las páginas</strong> usando el widget embebido de Dify. 
+                  Busca el botón verde en la esquina inferior derecha 🤖
+                </p>
+                <div className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-green-300 text-green-700 rounded-lg font-semibold">
+                  ✅ Widget Activo
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Módulos Principales */}

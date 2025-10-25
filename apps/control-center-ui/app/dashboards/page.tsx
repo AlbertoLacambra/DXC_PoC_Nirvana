@@ -768,7 +768,7 @@ Requires code update and owner approval.`;
                     <strong>Tiempo estimado:</strong> 1-2 minutos (depende de los cambios)
                   </li>
                   <li>
-                    <strong>Verificación:</strong> El dashboard se actualizará automáticamente mostrando "0 DRIFT"
+                    <strong>Verificación:</strong> El dashboard se actualizará automáticamente mostrando &quot;0 DRIFT&quot;
                   </li>
                 </ol>
               </div>

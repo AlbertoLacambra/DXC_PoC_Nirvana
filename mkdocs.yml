@@ -139,7 +139,9 @@ nav:
     - Security Gates: cicd/security.md
   
   - Guías:
-    - Quick Start: guides/quick-start.md
+    - Quick Start Infraestructura: guides/quick-start.md
+    - 🚀 Quick Start App + Chatbot: guides/quick-start-app.md
+    - 🤖 Integración del Chatbot: guides/chatbot-integration.md
     - Configuración de Secretos: guides/secrets-setup.md
     - Migración Terragrunt: guides/migration.md
     - Troubleshooting Teams: guides/teams-troubleshooting.md
