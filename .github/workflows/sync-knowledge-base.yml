@@ -35,14 +35,14 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
-    - name: 📦 Install dependencies
-      run: |
-        pip install --upgrade pip
-        pip install openai langchain-text-splitters psycopg2-binary gitpython tqdm
-    
-    - name: 🔍 Detect changed files
-      id: changes
-      run: |
+      - name: 📦 Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install openai langchain-text-splitters psycopg2-binary gitpython tqdm
+      
+      - name: 🔍 Detect changed files
+        id: changes
+        run: |
           if [ "${{ github.event.inputs.force_reindex }}" = "true" ]; then
             echo "Force reindex enabled - processing all files"
             find docs -name "*.md" > changed_files.txt
@@ -58,62 +58,62 @@ jobs:
           
           echo "Files to process:"
           cat changed_files.txt
-    
-    - name: 📝 Process documents
-      if: steps.changes.outputs.changed_count > 0
-      env:
-        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-        EMBEDDING_MODEL: text-embedding-3-large
-        POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
-        POSTGRES_PORT: 5432
-        POSTGRES_DB: nirvana_knowledge
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      run: |
-        python scripts/knowledge/process-knowledge-documents.py \
-          --files changed_files.txt
-    
-    - name: ✅ Verify sync
-      if: steps.changes.outputs.changed_count > 0
-      env:
-        POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
-        POSTGRES_PORT: 5432
-        POSTGRES_DB: nirvana_knowledge
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      run: |
-        python scripts/knowledge/verify-knowledge-sync.py
-    
-    - name: 📊 Generate summary
-      if: steps.changes.outputs.changed_count > 0
-      run: |
-        echo "## 🧠 Knowledge Base Sync Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Files processed:** ${{ steps.changes.outputs.changed_count }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Processed files" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        cat changed_files.txt >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-    
-    - name: 💬 Comment on PR (if applicable)
-      if: github.event_name == 'pull_request' && steps.changes.outputs.changed_count > 0
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '🧠 **Knowledge Base Updated**\n\n${{ steps.changes.outputs.changed_count }} files synced to knowledge portal.'
-          })
-    
-    - name: 🚨 Notify on failure
-      if: failure()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.setFailed('Knowledge base sync failed. Check logs for details.')
+      
+      - name: 📝 Process documents
+        if: steps.changes.outputs.changed_count > 0
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          EMBEDDING_MODEL: text-embedding-3-large
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: nirvana_knowledge
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          python scripts/knowledge/process-knowledge-documents.py \
+            --files changed_files.txt
+      
+      - name: ✅ Verify sync
+        if: steps.changes.outputs.changed_count > 0
+        env:
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: nirvana_knowledge
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          python scripts/knowledge/verify-knowledge-sync.py
+      
+      - name: 📊 Generate summary
+        if: steps.changes.outputs.changed_count > 0
+        run: |
+          echo "## 🧠 Knowledge Base Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Files processed:** ${{ steps.changes.outputs.changed_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Processed files" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat changed_files.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: 💬 Comment on PR (if applicable)
+        if: github.event_name == 'pull_request' && steps.changes.outputs.changed_count > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🧠 **Knowledge Base Updated**\n\n${{ steps.changes.outputs.changed_count }} files synced to knowledge portal.'
+            })
+      
+      - name: 🚨 Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed('Knowledge base sync failed. Check logs for details.')
