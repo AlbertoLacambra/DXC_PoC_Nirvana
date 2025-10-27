@@ -53,7 +53,7 @@ This guide walks you through creating and configuring a Dify Knowledge Dataset f
 1. **Select Embedding Provider**:
    - Provider: `Azure OpenAI`
    - Model: `text-embedding-3-large`
-   - Dimensions: `1536`
+   - Dimensions: `3072`
 
 2. **Embedding Settings**:
    ```yaml
@@ -71,11 +71,17 @@ This guide walks you through creating and configuring a Dify Knowledge Dataset f
 2. **Retrieval Parameters**:
    ```yaml
    Top K: 5
-   Score Threshold: 0.70
+   Score Threshold: 0.50
    Max Tokens: 4000
    Rerank: Enabled
    Rerank Model: Cohere Rerank (or compatible)
    ```
+
+   > **Note**: Score threshold of 0.50 is recommended based on production testing.  
+   > Typical similarity scores range 0.50-0.65 for relevant matches with:
+   > - text-embedding-3-large (3072 dimensions)
+   > - Multilingual queries (Spanish/English)
+   > - Semantic (not exact) matching
 
 3. **Chunking Strategy**:
    ```yaml
