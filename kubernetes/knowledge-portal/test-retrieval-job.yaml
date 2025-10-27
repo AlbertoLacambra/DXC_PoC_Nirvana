@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-knowledge-retrieval
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 7200  # Keep logs for 2 hours
+  template:
+    metadata:
+      labels:
+        app: test-retrieval
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test-retrieval
+        image: python:3.11-slim
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        env:
+        # PostgreSQL credentials
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "nirvana_knowledge"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        
+        # Azure OpenAI credentials
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_BASE
+        - name: EMBEDDING_MODEL
+          value: "text-embedding-3-large"
+        
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "📦 Installing dependencies..."
+          pip install --no-cache-dir psycopg2-binary openai > /dev/null 2>&1
+          
+          echo "📥 Downloading test script..."
+          apt-get update > /dev/null 2>&1
+          apt-get install -y git > /dev/null 2>&1
+          
+          git clone --depth 1 --branch master https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git /tmp/repo
+          
+          echo ""
+          echo "🧪 Running retrieval tests..."
+          echo ""
+          
+          cd /tmp/repo
+          python3 scripts/knowledge/test-retrieval.py
+          
+          echo ""
+          echo "✅ Test completed"
