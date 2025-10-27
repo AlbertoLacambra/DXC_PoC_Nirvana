@@ -1,0 +1,148 @@
+{
+  "version": "1.0",
+  "name": "Spec Generator",
+  "description": "Generate complete specifications (spec.md, plan.md, tasks.md) from natural language feature descriptions",
+  "model_config": {
+    "provider": "azure_openai",
+    "model": "gpt-4o",
+    "parameters": {
+      "temperature": 0.3,
+      "max_tokens": 16000,
+      "top_p": 0.95,
+      "frequency_penalty": 0,
+      "presence_penalty": 0
+    }
+  },
+  "conversation_variables": [
+    {
+      "name": "feature_description",
+      "type": "string",
+      "required": true,
+      "description": "User's feature description in natural language"
+    },
+    {
+      "name": "applied_specs",
+      "type": "array",
+      "default": ["git-flow", "security"],
+      "options": ["git-flow", "security", "iac-terraform", "finops"],
+      "description": "Specs to apply to this feature"
+    },
+    {
+      "name": "tech_stack_preference",
+      "type": "string",
+      "default": "auto",
+      "description": "Preferred tech stack or 'auto' for AI selection"
+    },
+    {
+      "name": "priority_focus",
+      "type": "string",
+      "default": "P1",
+      "options": ["P1", "P1+P2", "all"],
+      "description": "Which priority user stories to focus on"
+    }
+  ],
+  "workflow": {
+    "start_node": "analyze_domain",
+    "nodes": [
+      {
+        "id": "analyze_domain",
+        "type": "llm",
+        "name": "Analyze Domain",
+        "prompt": "Analyze the user's feature description and extract:\n\n1. **Feature Category** (auth, data management, integration, infrastructure, etc.)\n2. **Feature Name**\n3. **Main Goal**\n4. **Target Users**\n5. **Key Capabilities**\n\nFeature description: {{feature_description}}\n\nOutput JSON:\n```json\n{\n  \"category\": \"...\",\n  \"feature_name\": \"...\",\n  \"main_goal\": \"...\",\n  \"target_users\": [...],\n  \"key_capabilities\": [...]\n}\n```",
+        "next": "search_knowledge"
+      },
+      {
+        "id": "search_knowledge",
+        "type": "knowledge_retrieval",
+        "name": "Search Knowledge Portal",
+        "dataset_id": "{{KNOWLEDGE_PORTAL_DATASET_ID}}",
+        "query": "{{analyze_domain.output.category}} {{analyze_domain.output.feature_name}}",
+        "top_k": 5,
+        "score_threshold": 0.7,
+        "next": "generate_spec"
+      },
+      {
+        "id": "generate_spec",
+        "type": "llm",
+        "name": "Generate spec.md",
+        "system_prompt_file": "system-prompt.md",
+        "prompt": "Generate spec.md following the spec-template.md structure.\n\n**Feature Analysis**:\n{{analyze_domain.output}}\n\n**Knowledge Portal Context**:\n{{search_knowledge.output}}\n\n**Applied Specs**: {{applied_specs}}\n\n**Priority Focus**: {{priority_focus}}\n\nGenerate complete spec.md with:\n- User scenarios (3-7 stories with Given/When/Then)\n- Functional requirements (FR-XXX)\n- Success criteria (SC-XXX with measurable targets)\n- Validation checklist\n\nIMPORTANT:\n- Success criteria MUST have numbers (%, ms, hours, etc.)\n- No [NEEDS CLARIFICATION] markers\n- Tech-agnostic requirements\n- P1/P2/P3 priorities assigned",
+        "next": "generate_plan"
+      },
+      {
+        "id": "generate_plan",
+        "type": "llm",
+        "name": "Generate plan.md",
+        "system_prompt_file": "system-prompt.md",
+        "prompt": "Generate plan.md following the plan-template.md structure.\n\n**spec.md Content**:\n{{generate_spec.output}}\n\n**Tech Stack Preference**: {{tech_stack_preference}}\n\n**Applied Specs**: {{applied_specs}}\n\nGenerate complete plan.md with:\n- Tech stack (with justification for each choice)\n- Constitution check (reference applied specs)\n- Project structure (source code layout)\n- API contracts (all endpoints with request/response examples)\n- Data models (entities, DB schemas)\n- Implementation phases (Phase 0-3)\n- Testing strategy\n- Security considerations\n\nIMPORTANT:\n- Justify tech choices (why X over Y?)\n- Include JSON examples for API contracts\n- SQL schemas for data models\n- Map phases to user story priorities",
+        "next": "generate_tasks"
+      },
+      {
+        "id": "generate_tasks",
+        "type": "llm",
+        "name": "Generate tasks.md",
+        "system_prompt_file": "system-prompt.md",
+        "prompt": "Generate tasks.md following the tasks-template.md structure.\n\n**spec.md Content**:\n{{generate_spec.output}}\n\n**plan.md Content**:\n{{generate_plan.output}}\n\nGenerate complete tasks.md with:\n- Tasks organized by user story\n- Atomic tasks (2-8 hours each)\n- Task dependencies specified\n- Definition of done per task\n- Files to create/modify\n- Phase breakdown\n- Testing checklist\n- Database migrations (if needed)\n- Configuration changes\n- Deployment checklist\n\nIMPORTANT:\n- Subdivide tasks >8 hours\n- Each task links to SC-XXX from spec.md\n- Include test requirements (unit, integration, E2E)\n- Specify exact file paths",
+        "next": "validate_output"
+      },
+      {
+        "id": "validate_output",
+        "type": "code",
+        "name": "Validate Output",
+        "code_file": "validate.py",
+        "inputs": {
+          "spec_md": "{{generate_spec.output}}",
+          "plan_md": "{{generate_plan.output}}",
+          "tasks_md": "{{generate_tasks.output}}"
+        },
+        "next": "format_response"
+      },
+      {
+        "id": "format_response",
+        "type": "template",
+        "name": "Format Response",
+        "template": "✅ **Especificación completa generada**\n\n**Validación**:\n{{#if validate_output.valid}}\n✅ Todas las validaciones pasaron\n{{else}}\n❌ Errores encontrados: {{validate_output.summary.total_errors}}\n⚠️ Warnings: {{validate_output.summary.total_warnings}}\n\n**Errores**:\n{{#each validate_output.spec.errors}}\n- {{this}}\n{{/each}}\n{{#each validate_output.plan.errors}}\n- {{this}}\n{{/each}}\n{{#each validate_output.tasks.errors}}\n- {{this}}\n{{/each}}\n{{/if}}\n\n**Métricas**:\n- User Stories: {{validate_output.spec.metrics.user_stories}}\n- Success Criteria: {{validate_output.spec.metrics.success_criteria}}\n- Tasks: {{validate_output.tasks.metrics.total_tasks}}\n- Avg Task Time: {{validate_output.tasks.metrics.avg_time}}h\n\n---\n\n# spec.md\n\n{{generate_spec.output}}\n\n---\n\n# plan.md\n\n{{generate_plan.output}}\n\n---\n\n# tasks.md\n\n{{generate_tasks.output}}\n\n---\n\n¿Quieres que ajuste algo específico?",
+        "next": "end"
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "outputs": {
+          "spec_md": "{{generate_spec.output}}",
+          "plan_md": "{{generate_plan.output}}",
+          "tasks_md": "{{generate_tasks.output}}",
+          "validation": "{{validate_output}}",
+          "formatted_response": "{{format_response.output}}"
+        }
+      }
+    ]
+  },
+  "knowledge_portal": {
+    "integration": "dify_dataset",
+    "dataset_name": "DXC Cloud Mind Documentation",
+    "embedding_model": "text-embedding-3-large",
+    "retrieval_mode": "semantic_search",
+    "reranking": true
+  },
+  "features": {
+    "conversation_opener": "¡Hola! Soy el **Spec Generator**. \n\nDescríbeme la feature que quieres implementar y generaré especificaciones completas siguiendo la metodología Spec-Driven Development.\n\n**Ejemplo**: \"Necesito un sistema de autenticación OAuth2 con Azure AD para el Control Center.\"\n\n¿Qué feature quieres especificar?",
+    "suggested_questions": [
+      "Sistema de notificaciones en tiempo real",
+      "Autenticación OAuth2 con Azure AD",
+      "Dashboard de analytics con gráficos",
+      "API REST para gestión de proyectos",
+      "Deploy automático a AKS con Terraform"
+    ],
+    "citation": true,
+    "annotation_reply": {
+      "enabled": true,
+      "score_threshold": 0.8
+    }
+  },
+  "metadata": {
+    "created_date": "2025-10-27",
+    "version": "1.0",
+    "author": "DXC Cloud Mind Team",
+    "tags": ["spec-driven", "specifications", "automation"]
+  }
+}
