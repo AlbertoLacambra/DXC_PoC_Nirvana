@@ -107,16 +107,42 @@ class KnowledgeRetrieval:
         
         print(f"   Found {len(results)} results, {len(filtered_results)} above threshold")
         
-        return filtered_results
+        # Show top scores even if below threshold for debugging
+        if results and not filtered_results:
+            top_scores = [r['similarity_score'] for r in results[:3]]
+            print(f"   ⚠️  Top scores: {', '.join([f'{s:.4f}' for s in top_scores])}")
+        
+        # Return all results for display (threshold filter for production use)
+        return results
     
-    def display_results(self, results: List[Dict[str, Any]]):
+    def display_results(self, results: List[Dict[str, Any]], threshold: float = 0.70):
         """Display search results in a readable format."""
         if not results:
-            print("\n❌ No results found above the threshold")
+            print("\n❌ No results found")
             return
         
-        print(f"\n✅ Top {len(results)} Results:\n")
-        print("=" * 120)
+        # Separate results by threshold
+        above_threshold = [r for r in results if r['similarity_score'] >= threshold]
+        below_threshold = [r for r in results if r['similarity_score'] < threshold]
+        
+        if above_threshold:
+            print(f"\n✅ {len(above_threshold)} Results Above Threshold ({threshold}):\n")
+            print("=" * 120)
+            self._print_results(above_threshold)
+        
+        if below_threshold:
+            print(f"\n⚠️  {len(below_threshold)} Results Below Threshold ({threshold}) [For Analysis]:\n")
+            print("=" * 120)
+            self._print_results(below_threshold[:3])  # Show top 3 below threshold
+        
+        if not above_threshold:
+            print(f"\n❌ No results found above threshold {threshold}")
+            print(f"   Consider lowering threshold - best score was {results[0]['similarity_score']:.4f}")
+    
+    def _print_results(self, results: List[Dict[str, Any]]):
+        """Helper to print results."""
+    def _print_results(self, results: List[Dict[str, Any]]):
+        """Helper to print results."""
         
         for i, result in enumerate(results, 1):
             print(f"\n{i}. 📄 {result['file_path']}")
@@ -179,7 +205,7 @@ class KnowledgeRetrieval:
                 category_filter=test['category']
             )
             
-            self.display_results(results)
+            self.display_results(results, threshold=0.70)
         
         print("\n\n" + "=" * 120)
         print("✅ TEST SUITE COMPLETED".center(120))
