@@ -2,194 +2,202 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/ARCHITECTURE_V2/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/IMPLEMENTATION_PLAN/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/OPTIMIZATION_PROPOSAL/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/PRODUCT_VISION/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/business-plan/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/status/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/01-hub-spoke-design/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/02-technology-stack/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/adr/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/ai-rag-system/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/deployed-resources/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/overview/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/single-aks/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/adr/ADR-008-knowledge-portal-vector-database/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/architecture/adr/ADR-009-spec-driven-development-platform/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/deployment/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/drift-detection/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/pr-validation/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/security/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/cicd/workflows/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/analysis/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/optimization/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/costs/roi/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/finops/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/finops/02-focus-framework/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/finops/03-cost-optimizer/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/finops/04-rate-optimization/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/finops/05-auto-optimization-pr/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/knowledge-portal/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/knowledge-portal/IMPLEMENTATION/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/spec-driven-development/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/spec-driven-development/GETTING_STARTED/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/spec-driven-development/NIRVANA_SPEC_ECOSYSTEM_ARCHITECTURE/</loc>
+         <lastmod>2025-10-28</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/spec-driven-development/PHASE_2_IMPLEMENTATION/</loc>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/spec-driven-development/PROJECT_STATUS/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/sre-agent/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/chatbot-integration/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/dify-knowledge-setup/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/initial-indexing/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/migration/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/quick-start-app/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/quick-start/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/secrets-setup/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/guides/teams-troubleshooting/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/github-actions/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/links/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/reference/terraform-modules/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/use-cases/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/use-cases/vibe-coding/UC-101-create-fastapi-project/</loc>
-         <lastmod>2025-10-27</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
 </urlset>
