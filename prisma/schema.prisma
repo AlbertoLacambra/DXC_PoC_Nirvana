@@ -1,0 +1,155 @@
+// =============================================================================
+// Prisma Schema for DXC Cloud Mind - Nirvana
+// Description: Database schema for Spec Library Manager
+// Author: DXC Cloud Mind - Nirvana Team
+// Date: 2025-10-28
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum SpecCategory {
+  development
+  infrastructure
+  security
+  testing
+  observability
+  finops
+  compliance
+}
+
+enum SpecStatus {
+  draft
+  active
+  deprecated
+  archived
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+/// Main table storing all specifications with metadata and versioning
+model Spec {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Basic Information
+  name        String  @unique @db.VarChar(100)
+  displayName String  @map("display_name") @db.VarChar(200)
+  description String? @db.Text
+  category    SpecCategory
+  version     String  @default("1.0.0") @db.VarChar(20)
+  status      SpecStatus @default(active)
+  content     String  @db.Text
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") @db.VarChar(100)
+
+  // Metadata (Arrays)
+  tags         String[]
+  applicableTo String[] @map("applicable_to")
+  dependencies String[]
+  conflicts    String[]
+
+  // Validation
+  required   Boolean @default(false)
+  minVersion String? @map("min_version") @db.VarChar(20)
+  maxVersion String? @map("max_version") @db.VarChar(20)
+
+  // Usage Tracking
+  projectCount Int       @default(0) @map("project_count")
+  lastUsed     DateTime? @map("last_used")
+  popularity   Int       @default(0)
+
+  // Relations
+  versions SpecVersion[]
+  usage    SpecUsage[]
+
+  // Indexes
+  @@index([category])
+  @@index([status])
+  @@index([name])
+  @@index([popularity(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+  @@map("specs")
+}
+
+/// Version history for specifications, following semantic versioning
+model SpecVersion {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Key
+  specId String @map("spec_id") @db.Uuid
+  spec   Spec   @relation(fields: [specId], references: [id], onDelete: Cascade)
+
+  // Version Information
+  version   String  @db.VarChar(20)
+  content   String  @db.Text
+  changelog String? @db.Text
+
+  // Audit Fields
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy String?  @map("created_by") @db.VarChar(100)
+
+  // Constraints
+  @@unique([specId, version])
+  @@index([specId])
+  @@index([version])
+  @@index([createdAt(sort: Desc)])
+  @@map("spec_versions")
+}
+
+/// Tracks which projects use which specifications for analytics
+model SpecUsage {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Foreign Key
+  specId String @map("spec_id") @db.Uuid
+  spec   Spec   @relation(fields: [specId], references: [id], onDelete: Cascade)
+
+  // Project Information
+  projectId   String  @map("project_id") @db.Uuid
+  projectName String? @map("project_name") @db.VarChar(200)
+
+  // Usage Tracking
+  appliedAt   DateTime @default(now()) @map("applied_at")
+  specVersion String?  @map("spec_version") @db.VarChar(20)
+
+  // Constraints
+  @@unique([specId, projectId])
+  @@index([specId])
+  @@index([projectId])
+  @@index([appliedAt(sort: Desc)])
+  @@map("spec_usage")
+}
+
+// =============================================================================
+// Notes
+// =============================================================================
+
+// Full-text search is implemented at the database level using PostgreSQL's
+// GIN index (see migration 001_create_specs_tables.sql)
+//
+// To search specs:
+//   SELECT * FROM specs
+//   WHERE to_tsvector('english', display_name || ' ' || description || ' ' || content)
+//         @@ plainto_tsquery('english', 'your search query');
+//
+// Or use Prisma raw query:
+//   prisma.$queryRaw`SELECT * FROM specs WHERE ...`
