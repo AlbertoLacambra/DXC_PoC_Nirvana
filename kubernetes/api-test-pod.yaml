@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-test-pod
+  namespace: dify
+spec:
+  containers:
+  - name: nodejs-test
+    image: node:18-alpine
+    command: ['sh', '-c', 'sleep 3600']
+    env:
+    - name: DATABASE_URL
+      value: "postgresql://difyadmin::hAqXVV>wqjB*:)SJhPZD25n@dify-postgres-9107e36a.postgres.database.azure.com:5432/dify?schema=public&sslmode=require"
+  restartPolicy: Never

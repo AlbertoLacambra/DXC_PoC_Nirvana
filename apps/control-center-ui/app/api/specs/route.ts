@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
       tags: searchParams.get('tags')?.split(','),
       required: searchParams.get('required') === 'true' ? true : searchParams.get('required') === 'false' ? false : undefined,
       search: searchParams.get('search') || undefined,
-      limit: parseInt(searchParams.get('limit') || '50'),
-      offset: parseInt(searchParams.get('offset') || '0'),
+      limit: Math.min(parseInt(searchParams.get('limit') || '50'), 1000), // Cap at 1000
+      offset: Math.max(parseInt(searchParams.get('offset') || '0'), 0), // Ensure non-negative
       sortBy: (searchParams.get('sortBy') as any) || 'popularity',
       sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
     };
@@ -67,11 +67,15 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: any = {};
 
-    if (params.category) {
+    // Only apply category filter if it's a valid category
+    const validCategories: SpecCategory[] = ['development', 'infrastructure', 'security', 'testing', 'observability', 'finops', 'compliance'];
+    if (params.category && validCategories.includes(params.category)) {
       where.category = params.category;
     }
 
-    if (params.status) {
+    // Only apply status filter if it's a valid status
+    const validStatuses: SpecStatus[] = ['draft', 'active', 'deprecated', 'archived'];
+    if (params.status && validStatuses.includes(params.status)) {
       where.status = params.status;
     }
 
@@ -229,7 +233,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        data: result.spec,
+        data: {
+          spec: result.spec,
+          version: result.version,
+        },
         message: 'Spec created successfully',
       },
       { status: 201 }
