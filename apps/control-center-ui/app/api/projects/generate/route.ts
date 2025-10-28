@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { generateProject, GenerateProjectInput } from '@/lib/generator/project-generator';
+import { ProjectType } from '@/lib/generator/template-manager';
+import { CiCdProvider } from '@/lib/generator/cicd-generator';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // =============================================================================
 // Types
@@ -16,19 +22,9 @@ interface ProjectConfiguration {
 }
 
 interface GenerateProjectRequest {
-  projectType: string;
+  projectType: ProjectType;
   selectedSpecs: string[];
   configuration: ProjectConfiguration;
-}
-
-interface GeneratedProject {
-  id: string;
-  name: string;
-  path: string;
-  type: string;
-  generatedFiles: number;
-  specsApplied: number;
-  createdAt: string;
 }
 
 // =============================================================================
@@ -36,32 +32,28 @@ interface GeneratedProject {
 // =============================================================================
 
 /**
- * Mock project generation
- * In Phase 3, this will be replaced with actual generation logic
+ * Fetch specs from database
  */
-function mockGenerateProject(request: GenerateProjectRequest): GeneratedProject {
-  const { projectType, selectedSpecs, configuration } = request;
-
-  // Simulate file generation based on project type and specs
-  const baseFiles = 10;
-  const filesPerSpec = 3;
-  const cicdFiles = configuration.options.createCiCd ? 2 : 0;
-  const gitFiles = configuration.options.initGit ? 3 : 0;
-
-  const totalFiles = baseFiles + (selectedSpecs.length * filesPerSpec) + cicdFiles + gitFiles;
-
-  // Generate a mock project ID
-  const projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-
-  return {
-    id: projectId,
-    name: configuration.name,
-    path: configuration.directory,
-    type: projectType,
-    generatedFiles: totalFiles,
-    specsApplied: selectedSpecs.length,
-    createdAt: new Date().toISOString(),
-  };
+async function fetchSpecs(specIds: string[]): Promise<Array<{ id: string; name: string; content: string }>> {
+  try {
+    const specs = await prisma.spec.findMany({
+      where: {
+        id: {
+          in: specIds,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        content: true,
+      },
+    });
+    
+    return specs;
+  } catch (error) {
+    console.error('Error fetching specs:', error);
+    return [];
+  }
 }
 
 /**
@@ -108,8 +100,7 @@ function validateRequest(request: any): { valid: boolean; error?: string } {
  * POST /api/projects/generate
  * 
  * Generate a new project based on the wizard selections.
- * This is a mock implementation for Phase 2.7.
- * In Phase 3, this will trigger actual file generation using the spec engine.
+ * Phase 3 implementation with actual file generation.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -127,18 +118,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simulate processing delay (300-800ms)
-    const delay = 300 + Math.random() * 500;
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // Fetch specs from database
+    const specs = await fetchSpecs(body.selectedSpecs);
+    
+    if (specs.length === 0 && body.selectedSpecs.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'No valid specs found',
+        },
+        { status: 400 }
+      );
+    }
 
-    // Generate the project (mock)
-    const generatedProject = mockGenerateProject(body);
+    // Prepare generation input
+    const generationInput: GenerateProjectInput = {
+      projectType: body.projectType,
+      projectName: body.configuration.name,
+      directory: body.configuration.directory,
+      specs: specs,
+      variables: body.configuration.variables || {},
+      options: {
+        initGit: body.configuration.options.initGit,
+        createCiCd: body.configuration.options.createCiCd,
+        ciCdProvider: body.configuration.options.ciCdProvider as CiCdProvider,
+      },
+    };
+
+    // Generate the project
+    const result = await generateProject(generationInput);
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Project generation failed',
+          errors: result.errors,
+        },
+        { status: 500 }
+      );
+    }
+
+    // Generate project ID
+    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    // TODO: Track usage in database (spec_usage table)
+    // This will be implemented once we have the projects table created
 
     // Return success response
     return NextResponse.json({
       success: true,
       message: 'Project generated successfully',
-      data: generatedProject,
+      data: {
+        id: projectId,
+        name: body.configuration.name,
+        path: result.projectPath,
+        type: body.projectType,
+        generatedFiles: result.generatedFiles,
+        specsApplied: result.appliedSpecs,
+        gitCommit: result.gitCommit,
+        duration: result.duration,
+        createdAt: new Date().toISOString(),
+      },
     });
   } catch (error: any) {
     console.error('Error generating project:', error);
@@ -149,6 +190,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
