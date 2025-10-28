@@ -109,13 +109,21 @@ export default function Home() {
                 Generación de proyectos completos desde lenguaje natural
               </p>
             </div>
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-              <div className="text-4xl mb-3">📚</div>
+            <a 
+              href="/knowledge-search"
+              className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-green-200 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-4xl">🧠</div>
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  VECTOR DB
+                </span>
+              </div>
               <h2 className="text-xl font-semibold mb-2 text-gray-800">Knowledge Portal</h2>
-              <p className="text-gray-600 text-sm">
-                Asistente RAG con documentación técnica
+              <p className="text-gray-700 text-sm">
+                Búsqueda semántica en documentación técnica con pgvector
               </p>
-            </div>
+            </a>
           </div>
         </div>
 
