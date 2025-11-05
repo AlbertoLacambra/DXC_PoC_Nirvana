@@ -104,8 +104,20 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.local.backup
 secrets/
 credentials/
+
+# Backups with sensitive data
+backups/
+
+# Helm charts with secrets
+helm-dify-chart/values-custom*.yaml
+helm-dify-chart/values.yaml
+
+# Documentation with credentials
+apps/control-center-ui/KNOWLEDGE_PORTAL_READY.md
+docs/features/knowledge-portal/USER_GUIDE.md
 
 # Kubernetes
 kubeconfig
