@@ -117,6 +117,30 @@
          <lastmod>2025-11-05</lastmod>
     </url>
     <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/ansible.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/azure-functions-typescript.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/containerization-docker-best-practices.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/kubernetes-deployment-best-practices.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/reactjs.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
+         <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/instructions/terraform.instructions/</loc>
+         <lastmod>2025-11-05</lastmod>
+    </url>
+    <url>
          <loc>https://dxc-technology-spain.github.io/DXC_PoC_Nirvana/features/agent-hub/prompts/az-cost-optimize.prompt/</loc>
          <lastmod>2025-11-05</lastmod>
     </url>
