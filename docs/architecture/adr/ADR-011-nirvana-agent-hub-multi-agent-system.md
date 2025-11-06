@@ -594,20 +594,123 @@ docs/features/agent-hub/
 
 **🎯 Phase 3 Achievement**: Complete responsive UI for all 4 Agent Hub components. Users can browse, search, execute agents, render prompts, apply instructions, and chat with specialized AI modes.
 
-### Phase 4: MCP Integration (Week 7-8) ⏳ **PENDING**
+### Phase 4: MCP Integration (Week 7-8) ✅ **COMPLETE**
 
-#### **Milestone 4.1: MCP Server Setup** 🔧
-- [ ] Configure Azure MCP server connection
-- [ ] Configure AKS MCP server
-- [ ] Configure Azure DevOps MCP
-- [ ] Configure Microsoft Docs MCP
-- [ ] Test connectivity and authentication
+**Status**: ✅ 100% Complete (2/2 milestones)  
+**Commit**: 6dba57d (MCP Registry, Client, APIs, UI)  
+**Total Code**: 6 files, ~1,300 lines
 
-#### **Milestone 4.2: Tool Integration** 🛠️
-- [ ] Expose MCP tools to agents
-- [ ] Implement tool execution with error handling
-- [ ] Add tool usage logging
-- [ ] Create tool permission mappings
+#### **Milestone 4.1: MCP Server Setup** ✅ **COMPLETE** (commit 6dba57d)
+- [x] Configure Azure MCP server connection
+- [x] Configure AKS MCP server
+- [x] Configure Azure DevOps MCP
+- [x] Configure Microsoft Docs MCP
+- [x] Test connectivity and authentication
+
+**Implementation:** MCP Registry & Client (~800 lines)
+- apps/control-center-ui/lib/mcp/mcp-registry.ts (MCP server configurations)
+- apps/control-center-ui/lib/mcp/mcp-client.ts (Unified client interface)
+
+**MCP Servers Configured:**
+
+1. **Azure MCP Server**
+   - Endpoint: `http://localhost:3001/mcp`
+   - Authentication: Bearer token
+   - Tools: 5 (list_subscriptions, list_resource_groups, list_resources, get_resource_details, estimate_cost)
+   - Categories: Query (4), Analysis (1)
+
+2. **AKS MCP Server**
+   - Endpoint: `http://localhost:3002/mcp`
+   - Authentication: Bearer token
+   - Tools: 5 (list_clusters, get_cluster_nodes, list_namespaces, get_pods, scale_deployment)
+   - Categories: Query (4), Action (1)
+
+3. **Azure DevOps MCP Server**
+   - Endpoint: `http://localhost:3003/mcp`
+   - Authentication: API Key (PAT)
+   - Tools: 4 (list_projects, list_pipelines, get_pipeline_runs, trigger_pipeline)
+   - Categories: Query (3), Action (1)
+
+4. **Microsoft Docs MCP Server**
+   - Endpoint: `http://localhost:3004/mcp`
+   - Authentication: None (public)
+   - Tools: 3 (search_docs, get_article, get_api_reference)
+   - Categories: Query (3)
+
+**Total Tools**: 17 across 4 servers
+
+**Features:**
+- Dynamic server registry with enable/disable flags
+- Multi-authentication support (Bearer, API Key, OAuth2, None)
+- Tool schema with parameter validation (type, required, enum, default)
+- Permission-based access control (required_roles)
+- Execution time estimates
+- Connection health checks with latency measurement
+- Tool categorization (resource, query, action, analysis)
+
+#### **Milestone 4.2: Tool Integration** ✅ **COMPLETE** (commit 6dba57d)
+- [x] Expose MCP tools to agents via API
+- [x] Implement tool execution with error handling
+- [x] Add tool usage logging
+- [x] Create tool permission mappings
+- [x] Build MCP Tools UI
+
+**Implementation:** APIs & UI (~500 lines)
+- apps/control-center-ui/app/api/mcp/execute/route.ts (Tool execution endpoint)
+- apps/control-center-ui/app/api/mcp/servers/route.ts (Server listing with status)
+- apps/control-center-ui/app/api/mcp/tools/route.ts (Tool discovery)
+- apps/control-center-ui/app/mcp/tools/page.tsx (MCP Tools browser UI)
+
+**API Endpoints:**
+
+1. **POST /api/mcp/execute**
+   - Execute a tool on any MCP server
+   - Request: `{ server_id, tool_name, parameters, user_context }`
+   - Response: `{ success, result, error, execution_time_ms }`
+   - Features:
+     - Server validation (enabled check)
+     - Tool validation (exists in server)
+     - Permission checking (required_permissions vs user_roles)
+     - Parameter validation (required, type, enum)
+     - Audit logging (server, tool, user, duration, success)
+
+2. **GET /api/mcp/servers**
+   - List all MCP servers
+   - Query params: `include_tools`, `test_connection`
+   - Features:
+     - Connection testing with latency measurement
+     - Tool count per server
+     - Authentication type display
+     - Metadata exposure (version, vendor, docs URL)
+
+3. **GET /api/mcp/tools**
+   - Browse all tools across servers
+   - Query params: `category`, `server_id`, `search`
+   - Features:
+     - Multi-server aggregation
+     - Category-based filtering
+     - Search by name/description
+     - Grouped results by category
+
+**MCP Tools UI:**
+- Server status dashboard with online/offline indicators
+- Real-time connection latency display
+- Tool browser with category badges (resource/query/action/analysis)
+- Multi-select filters (category, server)
+- Search functionality
+- Permission requirements visibility
+- Estimated execution duration display
+
+**Error Handling:**
+- Server not found (404)
+- Server disabled (403)
+- Tool not found (404)
+- Insufficient permissions (403 with required_permissions)
+- Parameter validation errors (400)
+- MCP server connection errors (500)
+- Network timeouts with graceful degradation
+
+**🎯 Phase 4 Achievement**: Complete MCP integration enabling agents to invoke 17 tools across 4 external servers (Azure, AKS, DevOps, Docs). Permission-based access control ensures secure tool execution with comprehensive error handling and audit logging.
 
 ### Phase 5: Access Control (Week 9)
 
