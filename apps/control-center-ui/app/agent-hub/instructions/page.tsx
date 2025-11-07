@@ -256,14 +256,9 @@ function InstructionCard({ instruction }: { instruction: Instruction }) {
 
             {/* Technologies */}
             <div className="mt-4 flex flex-wrap gap-2">
-              {instruction.technology.map((tech) => (
-                <span
-                  key={tech}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                >
-                  {tech}
-                </span>
-              ))}
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                {instruction.technology}
+              </span>
             </div>
 
             {/* Apply To */}
