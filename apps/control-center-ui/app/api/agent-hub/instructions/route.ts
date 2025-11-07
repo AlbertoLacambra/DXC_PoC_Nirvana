@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
     const technologiesResult = await pool.query(technologiesQuery);
     
     return NextResponse.json({
-      data: dataResult.rows,
+      instructions: dataResult.rows,
       pagination: {
         page,
         limit,

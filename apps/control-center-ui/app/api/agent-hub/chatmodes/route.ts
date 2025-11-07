@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     const categoriesResult = await pool.query(categoriesQuery);
     
     return NextResponse.json({
-      data: dataResult.rows,
+      chatmodes: dataResult.rows,
       pagination: {
         page,
         limit,

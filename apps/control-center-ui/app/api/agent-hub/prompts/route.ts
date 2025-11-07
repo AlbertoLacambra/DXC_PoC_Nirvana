@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     const dataResult = await pool.query(dataQuery, [...values, limit, offset]);
     
     return NextResponse.json({
-      data: dataResult.rows,
+      prompts: dataResult.rows,
       pagination: {
         page,
         limit,

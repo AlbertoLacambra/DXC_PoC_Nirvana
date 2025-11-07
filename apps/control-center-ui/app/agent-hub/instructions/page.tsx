@@ -89,11 +89,11 @@ export default function InstructionsBrowserPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Back Button */}
           <Link 
-            href="/"
+            href="/agent-hub"
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            Back to Home
+            Back to Agent Hub
           </Link>
 
           <div>
