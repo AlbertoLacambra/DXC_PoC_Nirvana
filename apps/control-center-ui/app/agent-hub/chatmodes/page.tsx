@@ -8,6 +8,8 @@ import {
   FunnelIcon,
   SparklesIcon,
   ArrowLeftIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 
 interface ChatMode {
@@ -32,6 +34,7 @@ export default function ChatModesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Extracted unique tags from all chat modes
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -105,11 +108,35 @@ export default function ChatModesPage() {
             Back to Agent Hub
           </Link>
 
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Chat Modes</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Start specialized conversations with role-based AI assistants
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Chat Modes</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Start specialized conversations with role-based AI assistants
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md ${
+                  viewMode === 'grid'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <Squares2X2Icon className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md ${
+                  viewMode === 'list'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <ListBulletIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
