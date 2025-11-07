@@ -9,6 +9,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ArrowLeftIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 
 interface Instruction {
@@ -30,6 +32,7 @@ export default function InstructionsBrowserPage() {
   const [selectedTechnologies, setSelectedTechnologies] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const [expandedTechs, setExpandedTechs] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Technology categories for filtering
   const techCategories = {
@@ -96,11 +99,35 @@ export default function InstructionsBrowserPage() {
             Back to Agent Hub
           </Link>
 
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Instructions Browser</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Discover coding standards and best practices for various technologies
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Instructions Browser</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Discover coding standards and best practices for various technologies
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md ${
+                  viewMode === 'grid'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <Squares2X2Icon className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md ${
+                  viewMode === 'list'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <ListBulletIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
@@ -231,9 +258,9 @@ export default function InstructionsBrowserPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
                 {instructions.map((instruction) => (
-                  <InstructionCard key={instruction.id} instruction={instruction} />
+                  <InstructionCard key={instruction.id} instruction={instruction} viewMode={viewMode} />
                 ))}
               </div>
             )}
@@ -245,7 +272,35 @@ export default function InstructionsBrowserPage() {
 }
 
 // Instruction Card Component
-function InstructionCard({ instruction }: { instruction: Instruction }) {
+function InstructionCard({ instruction, viewMode = 'grid' }: { instruction: Instruction; viewMode?: 'grid' | 'list' }) {
+  if (viewMode === 'list') {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow p-6">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">{instruction.name}</h3>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                {instruction.technology}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">{instruction.description}</p>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Applies to:</span>{' '}
+              <code className="px-2 py-1 bg-gray-100 rounded text-xs">{instruction.apply_to}</code>
+            </div>
+          </div>
+          <Link
+            href={`/agent-hub/instructions/${instruction.id}`}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
+          >
+            View Details
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow">
       <div className="p-6">
