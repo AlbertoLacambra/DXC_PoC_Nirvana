@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { readFile } from 'fs/promises';
+import path from 'path';
 
 // =====================================================
 // PostgreSQL Connection Pool
@@ -65,6 +67,27 @@ export async function GET(
       );
     }
     
+    // Load content from file if not cached
+    let prompt = result.rows[0];
+    if (!prompt.content && prompt.file_path) {
+      try {
+        // From apps/control-center-ui, go up 2 levels to reach monorepo root
+        const filePath = path.join(process.cwd(), '..', '..', prompt.file_path);
+        console.log('Loading prompt from:', filePath);
+        prompt.content = await readFile(filePath, 'utf-8');
+        
+        // Cache in database
+        await pool.query(
+          'UPDATE prompts SET content = $1 WHERE id = $2',
+          [prompt.content, id]
+        );
+      } catch (fileError) {
+        console.error('Error loading prompt file:', fileError);
+        console.error('Attempted path:', path.join(process.cwd(), '..', '..', prompt.file_path));
+        // Don't fail the request, just return without content
+      }
+    }
+    
     // Log audit trail
     await pool.query(
       `INSERT INTO audit_logs (
@@ -75,7 +98,7 @@ export async function GET(
         'prompt.viewed',
         'prompt',
         id,
-        result.rows[0].name,
+        prompt.name,
         'system', // TODO: Get from authenticated user
         'user@dxc.com',
         'read',
@@ -83,7 +106,7 @@ export async function GET(
     );
     
     return NextResponse.json({
-      data: result.rows[0],
+      data: prompt,
     }, { status: 200 });
     
   } catch (error: any) {

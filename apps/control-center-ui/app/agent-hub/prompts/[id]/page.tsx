@@ -19,6 +19,7 @@ interface Prompt {
   category: string;
   tags: string[];
   template: string;
+  content?: string; // Content loaded from markdown file
   variables: Array<{
     name: string;
     description: string;
@@ -66,7 +67,8 @@ export default function PromptDetailPage() {
     try {
       const response = await fetch(`/api/agent-hub/prompts/${id}`);
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data; // API returns {data: prompt}
         setPrompt(data);
       }
     } catch (error) {
@@ -190,7 +192,7 @@ export default function PromptDetailPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Template</h2>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => copyToClipboard(prompt.template)}
+                    onClick={() => copyToClipboard(prompt.content || prompt.template)}
                     className={`p-2 rounded-lg transition-colors ${
                       copied
                         ? 'bg-green-100 text-green-700'
@@ -205,7 +207,7 @@ export default function PromptDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => downloadTemplate(prompt.template)}
+                    onClick={() => downloadTemplate(prompt.content || prompt.template)}
                     className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                     title="Download template"
                   >
@@ -214,7 +216,7 @@ export default function PromptDetailPage() {
                 </div>
               </div>
               <pre className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto border border-gray-200">
-                {prompt.template}
+                {prompt.content || prompt.template}
               </pre>
             </div>
 
