@@ -230,9 +230,9 @@ export default function InstructionDetailPage() {
                   <div className="text-2xl font-bold text-gray-900">{instruction.usage_count}</div>
                 </div>
                 <div className="pt-4 border-t border-gray-200">
-                  <div className="text-sm text-gray-600">Technologies</div>
-                  <div className="text-xl font-bold text-gray-900">
-                    {instruction.technology.length}
+                  <div className="text-sm text-gray-600">Technology</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {instruction.technology}
                   </div>
                 </div>
               </div>
