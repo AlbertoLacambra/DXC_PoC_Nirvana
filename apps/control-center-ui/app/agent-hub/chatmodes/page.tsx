@@ -269,16 +269,20 @@ function ChatModeCard({ chatMode }: { chatMode: ChatMode }) {
         </div>
 
         {/* Model Info */}
-        <div className="mt-4 text-xs text-gray-500 flex items-center gap-2">
-          <span className="px-2 py-1 bg-gray-100 rounded">
-            {chatMode.model_config.model}
-          </span>
-          {chatMode.model_config.temperature !== undefined && (
-            <span className="px-2 py-1 bg-gray-100 rounded">
-              temp: {chatMode.model_config.temperature}
-            </span>
-          )}
-        </div>
+        {chatMode.model_config && (
+          <div className="mt-4 text-xs text-gray-500 flex items-center gap-2">
+            {chatMode.model_config.model && (
+              <span className="px-2 py-1 bg-gray-100 rounded">
+                {chatMode.model_config.model}
+              </span>
+            )}
+            {chatMode.model_config.temperature !== undefined && (
+              <span className="px-2 py-1 bg-gray-100 rounded">
+                temp: {chatMode.model_config.temperature}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Tags */}
         {chatMode.tags && chatMode.tags.length > 0 && (
