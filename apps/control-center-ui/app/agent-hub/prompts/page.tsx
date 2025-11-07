@@ -8,6 +8,7 @@ import {
   ClipboardDocumentIcon,
   ArrowDownTrayIcon,
   FunnelIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 
@@ -70,6 +71,15 @@ export default function PromptLibraryPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Back Button */}
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeftIcon className="h-4 w-4" />
+            Back to Home
+          </Link>
+
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -77,6 +87,45 @@ export default function PromptLibraryPage() {
             </p>
           </div>
 
+          {/* Navigation Tabs */}
+          <div className="mt-6 flex gap-1 border-b border-gray-200">
+            <Link
+              href="/agent-hub"
+              className="px-4 py-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+            >
+              Agents
+            </Link>
+            <Link
+              href="/agent-hub/prompts"
+              className="px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600"
+            >
+              Prompts
+            </Link>
+            <Link
+              href="/agent-hub/instructions"
+              className="px-4 py-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+            >
+              Instructions
+            </Link>
+            <Link
+              href="/agent-hub/chatmodes"
+              className="px-4 py-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+            >
+              Chat Modes
+            </Link>
+            <Link
+              href="/mcp/tools"
+              className="px-4 py-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent"
+            >
+              MCP Tools
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
           {/* Search and Filters */}
           <div className="mt-6 flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
