@@ -192,7 +192,7 @@ export default function AgentDetailPage() {
                   <span className="font-medium">Required Roles:</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {agent.required_roles.map((role) => (
+                  {(agent.required_roles || []).map((role) => (
                     <span
                       key={role}
                       className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"

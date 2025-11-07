@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     
     // Build response
     const response = {
-      data: dataResult.rows,
+      agents: dataResult.rows,
       pagination: {
         page,
         limit,
