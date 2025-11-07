@@ -21,6 +21,7 @@ interface Agent {
   category: 'dxc-custom' | 'community';
   tags: string[];
   file_path: string;
+  content?: string; // Content loaded from markdown file
   tools: string[];
   required_roles: string[];
   usage_count: number;
@@ -54,7 +55,8 @@ export default function AgentDetailPage() {
     try {
       const response = await fetch(`/api/agent-hub/agents/${id}`);
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data; // API returns {data: agent}
         setAgent(data);
       } else {
         console.error('Agent not found');
@@ -143,6 +145,16 @@ export default function AgentDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Agent Instructions */}
+            {agent.content && (
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Agent Instructions</h2>
+                <pre className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap font-mono overflow-x-auto border border-gray-200">
+                  {agent.content}
+                </pre>
+              </div>
+            )}
+
             {/* Tags */}
             {agent.tags && agent.tags.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 p-6">

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { readFile } from 'fs/promises';
+import path from 'path';
 
 // =====================================================
 // PostgreSQL Connection Pool
@@ -81,6 +83,27 @@ export async function GET(
       );
     }
     
+    // Load content from file if not cached
+    let agent = result.rows[0];
+    if (!agent.content && agent.file_path) {
+      try {
+        // From apps/control-center-ui, go up 2 levels to reach monorepo root
+        const filePath = path.join(process.cwd(), '..', '..', agent.file_path);
+        console.log('Loading agent from:', filePath);
+        agent.content = await readFile(filePath, 'utf-8');
+        
+        // Cache in database
+        await pool.query(
+          'UPDATE agents SET content = $1 WHERE id = $2',
+          [agent.content, id]
+        );
+      } catch (fileError) {
+        console.error('Error loading agent file:', fileError);
+        console.error('Attempted path:', path.join(process.cwd(), '..', '..', agent.file_path));
+        // Don't fail the request, just return without content
+      }
+    }
+    
     // Log audit trail (read access)
     await pool.query(
       `INSERT INTO audit_logs (
@@ -91,7 +114,7 @@ export async function GET(
         'agent.viewed',
         'agent',
         id,
-        result.rows[0].name,
+        agent.name,
         'system', // TODO: Get from authenticated user
         'user@dxc.com', // TODO: Get from authenticated user
         'read',
@@ -99,7 +122,7 @@ export async function GET(
     );
     
     return NextResponse.json({
-      data: result.rows[0],
+      data: agent,
     }, { status: 200 });
     
   } catch (error: any) {
