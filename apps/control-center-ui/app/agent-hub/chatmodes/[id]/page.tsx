@@ -121,22 +121,41 @@ export default function ChatSessionPage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputMessage;
     setInputMessage('');
     setSending(true);
 
     try {
+      // Simulated response (Dify API integration pending until 11/17/2025)
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      
+      const simulatedResponse: Message = {
+        role: 'assistant',
+        content: `This is a simulated response from "${chatMode.name}" mode.\n\n` +
+                 `You asked: "${currentInput}"\n\n` +
+                 `**Note:** Real AI responses will be available after Dify API integration (pending Azure subscription reactivation on 11/17/2025).\n\n` +
+                 `This chat mode uses:\n` +
+                 `- Role: ${chatMode.role}\n` +
+                 `- Context: ${chatMode.context_type}\n` +
+                 (chatMode.model_config?.model ? `- Model: ${chatMode.model_config.model}\n` : '') +
+                 `\nThe actual response would be generated based on the system prompt and your input.`,
+        timestamp: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, simulatedResponse]);
+      
+      /* TODO: Replace with real Dify API call after 11/17/2025
       const response = await fetch(
         `/api/agent-hub/chatmodes/${chatMode.id}/sessions/${session.id}/message`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: inputMessage }),
+          body: JSON.stringify({ message: currentInput }),
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        // Add assistant response
         setMessages(prev => [
           ...prev,
           {
@@ -146,6 +165,7 @@ export default function ChatSessionPage() {
           },
         ]);
       }
+      */
     } catch (error) {
       console.error('Error sending message:', error);
     } finally {
