@@ -201,9 +201,11 @@ export default function ChatSessionPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                {chatMode.model_config.model}
-              </span>
+              {chatMode.model_config?.model && (
+                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                  {chatMode.model_config.model}
+                </span>
+              )}
               {session && (
                 <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full flex items-center gap-1">
                   <ClockIcon className="h-4 w-4" />
