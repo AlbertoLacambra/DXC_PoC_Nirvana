@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     // Query parameters
-    const technology = searchParams.get('technology'); // 'terraform', 'python', 'kubernetes', etc.
+    const technologies = searchParams.getAll('technology'); // Multiple technologies possible
     const tags = searchParams.get('tags')?.split(',');
     const search = searchParams.get('search');
     const isActive = searchParams.get('isActive') !== 'false';
@@ -45,9 +45,15 @@ export async function GET(request: NextRequest) {
       values.push(true);
     }
     
-    if (technology) {
-      conditions.push(`technology ILIKE $${paramIndex++}`);
-      values.push(`%${technology}%`);
+    if (technologies && technologies.length > 0) {
+      // Match any of the selected technologies
+      const techConditions = technologies.map(() => {
+        const cond = `technology ILIKE $${paramIndex}`;
+        paramIndex++;
+        return cond;
+      });
+      conditions.push(`(${techConditions.join(' OR ')})`);
+      technologies.forEach(tech => values.push(`%${tech}%`));
     }
     
     if (tags && tags.length > 0) {
@@ -121,7 +127,7 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
       },
       filters: {
-        technology,
+        technologies,
         tags,
         search,
         isActive,
