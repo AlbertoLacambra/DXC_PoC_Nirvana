@@ -4,14 +4,14 @@ import { Pool } from 'pg';
 // =====================================================
 // PostgreSQL Connection Pool
 // =====================================================
-// Direct PostgreSQL access (interim solution until Dify API available)
+// Agent Hub local DB (temporary until Azure subscription reactivated on 11/17)
 
 const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
-  database: process.env.POSTGRES_DATABASE || 'nirvana',
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD,
+  host: process.env.AGENT_HUB_DB_HOST || process.env.AGENT_HUB_DB_HOST || process.env.POSTGRES_HOST || 'localhost',
+  port: parseInt(process.env.AGENT_HUB_DB_PORT || process.env.AGENT_HUB_DB_PORT || process.env.POSTGRES_PORT || '5432'),
+  database: process.env.AGENT_HUB_DB_NAME || 'nirvana_agent_hub',
+  user: process.env.AGENT_HUB_DB_USER || process.env.AGENT_HUB_DB_USER || process.env.POSTGRES_USER || 'postgres',
+  password: process.env.AGENT_HUB_DB_PASSWORD || process.env.AGENT_HUB_DB_PASSWORD || process.env.POSTGRES_PASSWORD,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
