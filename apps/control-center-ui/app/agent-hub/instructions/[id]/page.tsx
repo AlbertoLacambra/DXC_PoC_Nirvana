@@ -15,7 +15,7 @@ interface Instruction {
   id: string;
   name: string;
   description: string;
-  technology: string[];
+  technology: string; // Single technology, not array
   apply_to: string;
   tags: string[];
   file_path: string;
@@ -47,16 +47,13 @@ export default function InstructionDetailPage() {
     try {
       const response = await fetch(`/api/agent-hub/instructions/${id}`);
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data; // API returns {data: instruction}
         setInstruction(data);
         
-        // Fetch content from file
-        if (data.file_path) {
-          const contentResponse = await fetch(`/${data.file_path}`);
-          if (contentResponse.ok) {
-            const contentText = await contentResponse.text();
-            setContent(contentText);
-          }
+        // Use content from API response (loaded from file by the backend)
+        if (data.content) {
+          setContent(data.content);
         }
       }
     } catch (error) {

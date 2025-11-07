@@ -71,9 +71,11 @@ export async function GET(
     
     // Load content from file if not cached
     let instruction = result.rows[0];
-    if (!instruction.content) {
+    if (!instruction.content && instruction.file_path) {
       try {
+        // From apps/control-center-ui, go up 2 levels to reach monorepo root
         const filePath = path.join(process.cwd(), '..', '..', instruction.file_path);
+        console.log('Loading instruction from:', filePath);
         instruction.content = await readFile(filePath, 'utf-8');
         
         // Cache in database
@@ -83,6 +85,8 @@ export async function GET(
         );
       } catch (fileError) {
         console.error('Error loading instruction file:', fileError);
+        console.error('Attempted path:', path.join(process.cwd(), '..', '..', instruction.file_path));
+        // Don't fail the request, just return without content
       }
     }
     
