@@ -101,14 +101,144 @@ export default function Home() {
             <span className="text-purple-600">⚡</span>
             Desarrollo & Automatización
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-              <div className="text-4xl mb-3">🚀</div>
-              <h2 className="text-xl font-semibold mb-2 text-gray-800">Vibe Coding</h2>
-              <p className="text-gray-600 text-sm">
-                Generación de proyectos completos desde lenguaje natural
+          
+          {/* Featured: Agent Hub - NEW SECTION */}
+          <div className="mb-6">
+            <a 
+              href="/agent-hub"
+              className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-2 text-white"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="text-5xl">🤖</div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h2 className="text-3xl font-bold">Agent Hub</h2>
+                        <span className="bg-yellow-400 text-gray-900 text-sm px-3 py-1 rounded-full font-bold animate-pulse">
+                          ✨ NEW
+                        </span>
+                      </div>
+                      <p className="text-indigo-100 text-lg">
+                        Catálogo unificado de agentes, prompts, instrucciones y chat modes especializados
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 mt-4 flex-wrap">
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      🎯 2 Agents
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      💬 11 Prompts
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      📋 16 Instructions
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      🎭 13 Chat Modes
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      🔧 17 MCP Tools
+                    </span>
+                  </div>
+                </div>
+                <div className="text-6xl opacity-80 hidden lg:block">
+                  →
+                </div>
+              </div>
+            </a>
+          </div>
+
+          {/* Featured: Project Development Hub */}
+          <div className="mb-6">
+            <a 
+              href="/development"
+              className="block bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-2 text-white"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="text-5xl">🚀</div>
+                    <div>
+                      <h2 className="text-3xl font-bold mb-1">Project Development Hub</h2>
+                      <p className="text-purple-100 text-lg">
+                        Centro unificado de desarrollo basado en especificaciones
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 mt-4">
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      📚 Spec Library
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      ⚡ Project Generator
+                    </span>
+                    <span className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-semibold">
+                      🎯 6 Project Types
+                    </span>
+                  </div>
+                </div>
+                <div className="text-6xl opacity-80 hidden lg:block">
+                  →
+                </div>
+              </div>
+            </a>
+          </div>
+
+          {/* Other Development Tools */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* MCP Tools & Servers */}
+            <a 
+              href="/mcp/tools"
+              className="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-cyan-200 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-4xl">🔧</div>
+                <span className="bg-cyan-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  MCP
+                </span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">MCP Tools</h2>
+              <p className="text-gray-700 text-sm">
+                17 herramientas MCP en 4 servidores (Azure, AKS, DevOps, Docs)
               </p>
-            </div>
+            </a>
+
+            {/* Spec-Driven Project Development */}
+            <a 
+              href="/projects/new"
+              className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-purple-200 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-4xl">🚀</div>
+                <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  NEW
+                </span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">New Project</h2>
+              <p className="text-gray-700 text-sm">
+                Crear proyectos desde specs reutilizables con wizard interactivo
+              </p>
+            </a>
+
+            {/* Spec Library Browser */}
+            <a 
+              href="/specs/browse"
+              className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-indigo-200 cursor-pointer transform hover:-translate-y-1"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-4xl">📚</div>
+                <span className="bg-indigo-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  LIBRARY
+                </span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-800">Spec Library</h2>
+              <p className="text-gray-700 text-sm">
+                Explorar especificaciones técnicas reutilizables y templates
+              </p>
+            </a>
+
+            {/* Knowledge Portal */}
             <a 
               href="/knowledge-search"
               className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all border-2 border-green-200 cursor-pointer transform hover:-translate-y-1"
