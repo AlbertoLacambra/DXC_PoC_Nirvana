@@ -1,0 +1,44 @@
+{{- define "dify.db.config" -}}
+{{- if .Values.externalPostgres.enabled }}
+# DB_USERNAME: {{ .Values.externalPostgres.username | quote }}
+# DB_PASSWORD: {{ .Values.externalPostgres.password | quote }}
+DB_HOST: {{ .Values.externalPostgres.address }}
+DB_PORT: {{ .Values.externalPostgres.port | toString | quote }}
+DB_DATABASE: {{ .Values.externalPostgres.database.api | quote }}
+{{- if .Values.externalPostgres.sslMode }}
+SQLALCHEMY_DATABASE_URI: "postgresql://{{ .Values.externalPostgres.username }}:{{ .Values.externalPostgres.password }}@{{ .Values.externalPostgres.address }}:{{ .Values.externalPostgres.port }}/{{ .Values.externalPostgres.database.api }}?sslmode={{ .Values.externalPostgres.sslMode }}"
+{{- end }}
+{{- else if .Values.postgresql.enabled }}
+  {{ with .Values.postgresql.global.postgresql.auth }}
+  {{- if empty .username }}
+# DB_USERNAME: postgres
+# DB_PASSWORD: {{ .postgresPassword | quote }}
+  {{- else }}
+# DB_USERNAME: {{ .username | quote }}
+# DB_PASSWORD: {{ .password | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if eq .Values.postgresql.architecture "replication" }}
+DB_HOST: {{ .Release.Name }}-postgresql-primary
+  {{- else }}
+DB_HOST: {{ .Release.Name }}-postgresql
+  {{- end }}
+DB_PORT: "5432"
+DB_DATABASE: {{ .Values.postgresql.global.postgresql.auth.database }}
+{{- end }}
+{{- end }}
+
+{{- define "dify.pluginDaemon.db.config" -}}
+{{- if .Values.externalPostgres.enabled }}
+DB_HOST: {{ .Values.externalPostgres.address | quote }}
+DB_PORT: {{ .Values.externalPostgres.port | toString | quote }}
+DB_DATABASE: {{ .Values.externalPostgres.database.pluginDaemon | quote }}
+{{- if .Values.externalPostgres.sslMode }}
+SQLALCHEMY_DATABASE_URI: "postgresql://{{ .Values.externalPostgres.username }}:{{ .Values.externalPostgres.password }}@{{ .Values.externalPostgres.address }}:{{ .Values.externalPostgres.port }}/{{ .Values.externalPostgres.database.pluginDaemon }}?sslmode={{ .Values.externalPostgres.sslMode }}"
+{{- end }}
+{{- else if .Values.postgresql.enabled }}
+# N.B.: `pluginDaemon` will the very same `PostgresSQL` database as `api`, `worker`,
+# which is NOT recommended for production and subject to possible confliction in the future releases of `dify`
+{{- include "dify.db.config" . }}
+{{- end }}
+{{- end }}

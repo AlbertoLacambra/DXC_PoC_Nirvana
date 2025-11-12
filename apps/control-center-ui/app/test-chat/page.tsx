@@ -75,8 +75,9 @@ export default function TestChatPage() {
                 className="h-8 w-auto"
               />
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">
-                  DXC Cloud Mind - Nirvana
+                <h1 className="text-2xl font-bold">
+                  <span className="text-gray-800">DXC Cloud </span>
+                  <span className="text-purple-600">nIrvanA</span>
                 </h1>
                 <p className="text-sm text-gray-500">Test de Integración con Dify</p>
               </div>

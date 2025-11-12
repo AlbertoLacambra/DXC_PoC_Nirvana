@@ -15,10 +15,10 @@ export default function Home() {
             />
             <div className="h-12 w-px bg-gray-300"></div>
             <div className="text-left">
-              <h1 className="text-4xl font-bold text-gray-800">
-                DXC Cloud Mind
+              <h1 className="text-4xl font-bold">
+                <span className="text-gray-800">DXC Cloud </span>
+                <span className="text-purple-600">nIrvanA</span>
               </h1>
-              <p className="text-xl text-blue-600 font-semibold">Nirvana</p>
             </div>
           </div>
           

@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: add-unique-constraint
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: add-constraint
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: add-constraint
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔧 Agregando constraint UNIQUE (content_hash, file_path)..."
+          echo ""
+          
+          echo "📊 Constraints actuales:"
+          psql -c "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'knowledge_chunks'::regclass;"
+          echo ""
+          
+          echo "🔄 Agregando UNIQUE constraint..."
+          psql -c "ALTER TABLE knowledge_chunks ADD CONSTRAINT unique_chunk_per_file UNIQUE (content_hash, file_path);"
+          echo ""
+          
+          echo "📊 Constraints después:"
+          psql -c "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'knowledge_chunks'::regclass;"
+          echo ""
+          
+          echo "✅ Constraint agregado exitosamente"

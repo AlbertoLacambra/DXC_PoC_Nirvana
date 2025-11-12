@@ -1,0 +1,113 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-dify-dataset
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: dify-config
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: configure
+        image: python:3.11-slim
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: DIFY_API_URL
+          value: "http://dify-api.dify.svc.cluster.local/v1"
+        - name: DIFY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dify-api-credentials
+              key: api-key
+              optional: true
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "📦 Installing dependencies..."
+          pip install --no-cache-dir requests
+          
+          echo ""
+          echo "🔧 Configuring Dify Dataset..."
+          echo ""
+          
+          # Create configuration script inline (simplified version)
+          cat > /tmp/configure.py << 'PYTHON_SCRIPT'
+          import os
+          import requests
+          import json
+          
+          DIFY_API_URL = os.getenv("DIFY_API_URL", "http://dify-api.dify.svc.cluster.local/v1")
+          
+          print(f"🔍 Testing Dify API connection: {DIFY_API_URL}")
+          
+          try:
+              # Try to access Dify API health endpoint
+              response = requests.get(f"{DIFY_API_URL.replace('/v1', '')}/health", timeout=5)
+              print(f"✅ Dify API accessible: {response.status_code}")
+          except Exception as e:
+              print(f"⚠️  Dify API not accessible: {e}")
+              print(f"   This is expected if Dify is not deployed yet")
+          
+          print("")
+          print("📊 Manual Configuration Required:")
+          print("-" * 60)
+          print("1. Access Dify UI via VPN")
+          print("2. Navigate to Knowledge → Create Knowledge")
+          print("3. Use these settings:")
+          print("")
+          print("   Name: Nirvana Knowledge Portal")
+          print("   Type: External Knowledge Base")
+          print("   Database: PostgreSQL (pgvector)")
+          print("")
+          print("   Connection:")
+          print("   - Host: dify-postgres-9107e36a.postgres.database.azure.com")
+          print("   - Port: 5432")
+          print("   - Database: nirvana_knowledge")
+          print("   - User: difyadmin")
+          print(f"   - Password: {os.getenv('POSTGRES_PASSWORD', '[SET_FROM_SECRET]')}")
+          print("")
+          print("   Tables:")
+          print("   - Chunks: knowledge_chunks")
+          print("   - Column: content")
+          print("   - Embedding: embedding (vector 3072)")
+          print("   - Metadata: file_path, category, tags, repository")
+          print("")
+          print("   Retrieval:")
+          print("   - Method: Hybrid (Vector + Keyword)")
+          print("   - Top K: 5")
+          print("   - Score Threshold: 0.70")
+          print("   - Rerank: Enabled (if available)")
+          print("")
+          print("   Embedding Model:")
+          print("   - Provider: Azure OpenAI")
+          print("   - Model: text-embedding-3-large")
+          print("   - Dimensions: 3072")
+          print("-" * 60)
+          print("")
+          print("✅ Configuration guide printed")
+          print("   Follow the manual steps above to complete Dify setup")
+          
+          PYTHON_SCRIPT
+          
+          python /tmp/configure.py
+          
+          echo ""
+          echo "✅ Configuration script completed"

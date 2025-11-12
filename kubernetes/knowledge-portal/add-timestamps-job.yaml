@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: add-timestamps
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: add-timestamps
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: add-timestamps
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "➕ Agregando columnas de timestamps y usage..."
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS usage_count INTEGER DEFAULT 0;"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP WITH TIME ZONE;"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();"
+          echo "✅ Columnas agregadas"

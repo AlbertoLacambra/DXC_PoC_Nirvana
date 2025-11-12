@@ -1,0 +1,71 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-azure-openai
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test
+        image: python:3.11-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          pip install -q openai
+          
+          cat > test.py <<'EOF'
+          import os
+          from openai import AzureOpenAI
+
+          # Initialize client
+          client = AzureOpenAI(
+              api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+              azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
+              api_version='2024-02-01'
+          )
+
+          print(f"Endpoint: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
+          print(f"Model: {os.getenv('EMBEDDING_MODEL')}")
+          print(f"API Version: 2024-02-01")
+          print("")
+
+          # Test embedding
+          try:
+              response = client.embeddings.create(
+                  model=os.getenv('EMBEDDING_MODEL'),
+                  input="Test embedding"
+              )
+              print(f"✅ Success! Generated embedding with {len(response.data[0].embedding)} dimensions")
+          except Exception as e:
+              print(f"❌ Error: {e}")
+              import traceback
+              traceback.print_exc()
+          EOF
+
+          python test.py
+        env:
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: azure-openai-credentials
+              key: AZURE_OPENAI_API_BASE
+        - name: EMBEDDING_MODEL
+          value: "text-embedding-3-large"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"

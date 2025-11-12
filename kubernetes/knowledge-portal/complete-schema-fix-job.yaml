@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: complete-schema-fix
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: fix-schema
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: fix-schema
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔧 Completando schema de knowledge_chunks..."
+          echo ""
+          
+          echo "➕ Agregando todas las columnas faltantes..."
+          
+          # Columnas de metadata
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS repository VARCHAR(255);"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS category VARCHAR(100);"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS tags TEXT[];"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS language VARCHAR(50);"
+          
+          # Versioning
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS version VARCHAR(50);"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS commit_sha VARCHAR(40);"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS branch VARCHAR(100) DEFAULT 'master';"
+          
+          # Author
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS author VARCHAR(255);"
+          
+          # Quality
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS quality_score FLOAT;"
+          
+          echo ""
+          echo "✅ Schema completado"
+          echo ""
+          echo "📊 Columnas en knowledge_chunks:"
+          psql -c "\d knowledge_chunks" | grep -E "(repository|category|tags|language|version|commit_sha|branch|author|quality_score)"

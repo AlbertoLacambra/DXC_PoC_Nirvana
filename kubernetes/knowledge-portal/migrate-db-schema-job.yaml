@@ -1,0 +1,94 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-db-schema
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: psql
+        image: postgres:15
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "🔄 Migrating database schema..."
+          
+          # Add missing columns to source_documents
+          psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<EOF
+          -- Add repository column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS repository VARCHAR(255);
+          
+          -- Add content column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS content TEXT;
+          
+          -- Add language column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS language VARCHAR(50);
+          
+          -- Add chunks_count column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS chunks_count INTEGER DEFAULT 0;
+          
+          -- Add total_tokens column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS total_tokens INTEGER;
+          
+          -- Add commit_sha column (rename from git_commit_hash if it exists)
+          DO \$\$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name='source_documents' AND column_name='git_commit_hash'
+            ) THEN
+              ALTER TABLE source_documents RENAME COLUMN git_commit_hash TO commit_sha;
+            ELSE
+              ALTER TABLE source_documents ADD COLUMN IF NOT EXISTS commit_sha VARCHAR(40);
+            END IF;
+          END \$\$;
+          
+          -- Add branch column
+          ALTER TABLE source_documents 
+          ADD COLUMN IF NOT EXISTS branch VARCHAR(100) DEFAULT 'master';
+          
+          -- Create indexes if they don't exist
+          CREATE INDEX IF NOT EXISTS idx_source_repository ON source_documents(repository);
+          CREATE INDEX IF NOT EXISTS idx_source_file_path ON source_documents(file_path);
+          
+          -- Verify schema
+          \d source_documents
+          EOF
+          
+          echo "✅ Migration completed successfully"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: POSTGRES_DB
+          value: "nirvana_knowledge"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"

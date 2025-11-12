@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: check-dimension-issue
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: check-dimension
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: check-dimension
+        image: postgres:15
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔍 Verificando configuración de dimensiones..."
+          echo ""
+          
+          echo "�� Esquema de knowledge_chunks:"
+          psql -c "\d knowledge_chunks" | grep embedding
+          echo ""
+          
+          echo "📊 Total de chunks esperados (suma de chunks_count):"
+          psql -c "SELECT SUM(chunks_count) as total_expected_chunks FROM source_documents;"
+          echo ""
+          
+          echo "📊 Total de chunks en knowledge_chunks:"
+          psql -c "SELECT COUNT(*) as actual_chunks FROM knowledge_chunks;"
+          echo ""
+          
+          echo "✅ Verificación completada"

@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: direct-check-db
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: direct-check
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: check
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "📊 Verificando base de datos nirvana_knowledge..."
+          echo ""
+          
+          echo "Tablas existentes:"
+          psql -c "\dt"
+          echo ""
+          
+          echo "Conteo en source_documents:"
+          psql -c "SELECT COUNT(*) FROM source_documents;"
+          echo ""
+          
+          echo "Conteo en knowledge_chunks:"
+          psql -c "SELECT COUNT(*) FROM knowledge_chunks;"
+          echo ""
+          
+          echo "Sample de source_documents:"
+          psql -c "SELECT file_path, chunks_count FROM source_documents LIMIT 3;"
+          echo ""
+          
+          echo "Sample de knowledge_chunks:"
+          psql -c "SELECT file_path, LENGTH(content) as content_len, embedding IS NOT NULL as has_embedding FROM knowledge_chunks LIMIT 3;"

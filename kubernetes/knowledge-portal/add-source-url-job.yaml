@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: add-source-url
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: add-column
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: add-column
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "➕ Agregando columnas faltantes a knowledge_chunks..."
+          echo ""
+          
+          echo "📊 Esquema actual:"
+          psql -c "\d knowledge_chunks" | grep -E "(source_url|source_type)"
+          echo ""
+          
+          echo "➕ Agregando columnas..."
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS source_type VARCHAR(50) NOT NULL DEFAULT 'github';"
+          psql -c "ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS source_url TEXT;"
+          psql -c "ALTER TABLE knowledge_chunks ALTER COLUMN source_type DROP DEFAULT;"
+          echo ""
+          
+          echo "📊 Esquema después:"
+          psql -c "\d knowledge_chunks" | grep -E "(source_url|source_type)"
+          echo ""
+          
+          echo "✅ Columnas agregadas"

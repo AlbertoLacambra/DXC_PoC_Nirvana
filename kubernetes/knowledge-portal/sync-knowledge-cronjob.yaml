@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-knowledge-base
+  namespace: cloudmind
+spec:
+  # Run every 6 hours
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: knowledge-sync
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: sync
+            image: python:3.11-slim
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              # Install dependencies
+              apt-get update && apt-get install -y git
+              pip install --no-cache-dir openai langchain-text-splitters psycopg2-binary gitpython tqdm
+              
+              # Clone repository
+              cd /tmp
+              git clone https://github.com/AlbertoLacambra/DXC_PoC_Nirvana.git
+              cd DXC_PoC_Nirvana
+              
+              # Get all markdown and code files
+              find docs -name "*.md" > /tmp/changed_files.txt
+              find apps -name "*.py" -o -name "*.ts" -o -name "*.tsx" >> /tmp/changed_files.txt
+              
+              FILE_COUNT=$(wc -l < /tmp/changed_files.txt)
+              echo "Found $FILE_COUNT files to process"
+              
+              # Process documents
+              python scripts/knowledge/process-knowledge-documents.py \
+                --files /tmp/changed_files.txt
+              
+              echo "✓ Knowledge base sync completed successfully"
+              echo "  - Processed $FILE_COUNT files"
+            env:
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: AZURE_OPENAI_API_KEY
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-openai-credentials
+                  key: AZURE_OPENAI_API_BASE
+            - name: EMBEDDING_MODEL
+              value: "text-embedding-3-large"
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: host
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "nirvana_knowledge"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            resources:
+              requests:
+                cpu: "500m"
+                memory: "1Gi"
+              limits:
+                cpu: "2000m"
+                memory: "4Gi"

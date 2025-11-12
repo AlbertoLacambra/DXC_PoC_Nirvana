@@ -146,9 +146,23 @@ export async function POST(request: NextRequest) {
     };
 
     // Generate the project
+    console.log('Starting project generation with input:', {
+      projectType: generationInput.projectType,
+      projectName: generationInput.projectName,
+      directory: generationInput.directory,
+      specsCount: generationInput.specs.length,
+    });
+    
     const result = await generateProject(generationInput);
 
+    console.log('Generation result:', {
+      success: result.success,
+      generatedFiles: result.generatedFiles,
+      errors: result.errors,
+    });
+
     if (!result.success) {
+      console.error('Project generation failed:', result.errors);
       return NextResponse.json(
         {
           success: false,
@@ -183,10 +197,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error generating project:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
       {
         success: false,
         message: error.message || 'An error occurred while generating the project',
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }
     );

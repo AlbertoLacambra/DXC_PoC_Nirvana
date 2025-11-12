@@ -1,0 +1,71 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-vector-dimensions
+  namespace: cloudmind
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: fix-dimensions
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: fix-dimensions
+        image: postgres:15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: host
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: "nirvana_knowledge"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "🔧 Modificando dimensiones de vector de 1536 a 3072..."
+          echo ""
+          
+          echo "📊 Esquema actual:"
+          psql -c "\d knowledge_chunks" | grep embedding
+          echo ""
+          
+          echo "�️ Eliminando índice ivfflat (límite 2000 dims)..."
+          psql -c "DROP INDEX IF EXISTS idx_embedding;"
+          echo ""
+          
+          echo "�🔄 Alterando columna embedding a 3072 dimensiones..."
+          psql -c "ALTER TABLE knowledge_chunks ALTER COLUMN embedding TYPE vector(3072);"
+          echo ""
+          
+          echo "📊 Esquema después del cambio:"
+          psql -c "\d knowledge_chunks" | grep embedding
+          echo ""
+          
+          echo "⚠️  NOTA: Índice ivfflat NO recreado (límite 2000 dims)"
+          echo "    La búsqueda usará sequential scan hasta crear índice alternativo"
+          echo ""
+          
+          echo "✅ Dimensiones actualizadas a 3072"

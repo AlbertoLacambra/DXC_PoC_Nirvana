@@ -3,7 +3,7 @@ import "./globals.css";
 import DifyChatButton from "./components/DifyChatButton";
 
 export const metadata: Metadata = {
-  title: "DXC Cloud Mind - Nirvana",
+  title: "DXC Cloud nIrvanA",
   description: "Plataforma unificada de desarrollo Cloud impulsada por IA | Developed by DXC Iberia Cloud Team",
 };
 

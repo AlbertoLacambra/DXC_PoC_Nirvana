@@ -57,7 +57,8 @@ export default function KnowledgeSearchPage() {
             🧠 Knowledge Portal
           </h1>
           <p className="text-gray-600">
-            Busca en la documentación técnica de DXC Cloud Nirvana
+            Busca en la documentación técnica de <span className="text-gray-800">DXC Cloud </span>
+            <span className="text-purple-600 font-semibold">nIrvanA</span>
           </p>
           <p className="text-sm text-gray-500 mt-2">
             {results.length > 0 && `${results.length} resultados encontrados en ${executionTime}ms`}

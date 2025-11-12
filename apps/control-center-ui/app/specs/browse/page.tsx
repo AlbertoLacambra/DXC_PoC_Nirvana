@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Container, Typography, Box, Alert } from '@mui/material';
+import { Container, Typography, Box, Alert, Button } from '@mui/material';
+import { ArrowBack as BackIcon } from '@mui/icons-material';
+import Link from 'next/link';
 import { SpecGrid } from '@/components/specs/SpecGrid';
 import { SpecFilters, FilterState } from '@/components/specs/SpecFilters';
 import { SpecSearch } from '@/components/specs/SpecSearch';
@@ -197,6 +199,14 @@ export default function SpecBrowsePage() {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
+        <Button
+          component={Link}
+          href="/development"
+          startIcon={<BackIcon />}
+          sx={{ mb: 2 }}
+        >
+          Volver a Project Development
+        </Button>
         <Typography variant="h3" component="h1" gutterBottom>
           Specification Library
         </Typography>
