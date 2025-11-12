@@ -21,10 +21,22 @@ const httpRequestDurationMicroseconds = new promClient.Histogram({
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
 app.use(cors());
 app.use(express.json());
 app.use(morgan('combined'));
+
+// Serve static files (frontend)
+app.use(express.static('public'));
 
 // Request duration tracking
 app.use((req, res, next) => {
@@ -61,6 +73,20 @@ pool.query('SELECT NOW()', async (err, res) => {
 });
 
 // Routes
+
+// Root endpoint - API info (only for /api requests, frontend will be served by static middleware)
+app.get('/api', (req, res) => {
+  res.json({
+    name: 'Mindful Moments API',
+    version: '1.0.0',
+    description: 'Azure SRE Demo Application - Mindfulness tracking with autonomous incident management',
+    endpoints: {
+      health: '/health',
+      moments: '/api/moments',
+      metrics: '/metrics'
+    }
+  });
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

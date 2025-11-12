@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindful Moments - Azure SRE Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="text-center mb-12 fade-in">
+            <h1 class="text-5xl font-bold text-indigo-900 mb-2">🧘 Mindful Moments</h1>
+            <p class="text-gray-600 text-lg">Azure SRE Agent Demo Application</p>
+            <div class="mt-4 flex justify-center gap-4 text-sm">
+                <a href="/health" class="text-green-600 hover:text-green-800 font-medium">✓ Health</a>
+                <a href="/metrics" class="text-blue-600 hover:text-blue-800 font-medium">📊 Metrics</a>
+                <a href="/api/moments" class="text-purple-600 hover:text-purple-800 font-medium">🔗 API</a>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="stats">
+            <div class="bg-white rounded-lg shadow-md p-6 text-center fade-in">
+                <div class="text-3xl font-bold text-indigo-600" id="momentCount">-</div>
+                <div class="text-gray-600 mt-2">Total Moments</div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 text-center fade-in" style="animation-delay: 0.1s">
+                <div class="text-3xl font-bold text-green-600" id="dbStatus">-</div>
+                <div class="text-gray-600 mt-2">Database Status</div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 text-center fade-in" style="animation-delay: 0.2s">
+                <div class="text-3xl font-bold text-blue-600" id="uptime">-</div>
+                <div class="text-gray-600 mt-2">Uptime (seconds)</div>
+            </div>
+        </div>
+
+        <!-- Create Form -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8 fade-in" style="animation-delay: 0.3s">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">✨ Create New Moment</h2>
+            <form id="createForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Title</label>
+                    <input type="text" id="title" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Morning meditation, Gratitude practice...">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Content</label>
+                    <textarea id="content" required rows="3"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Describe your mindful moment..."></textarea>
+                </div>
+                <button type="submit"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105">
+                    Create Moment
+                </button>
+            </form>
+        </div>
+
+        <!-- Moments List -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📝 Your Moments</h2>
+            <div id="momentsList" class="space-y-4">
+                <div class="text-center text-gray-500 py-8">Loading moments...</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-600 text-sm mt-12 pb-8">
+            <p>Powered by Azure App Service + PostgreSQL Flexible Server</p>
+            <p class="mt-2">
+                <a href="https://github.com/AlbertoLacambra/DXC_PoC_Nirvana" target="_blank" class="text-indigo-600 hover:text-indigo-800">
+                    View on GitHub →
+                </a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Load health stats
+        async function loadHealth() {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                document.getElementById('dbStatus').textContent = data.database === 'connected' ? '✓ Connected' : '✗ Disconnected';
+                document.getElementById('uptime').textContent = Math.floor(data.uptime);
+            } catch (error) {
+                console.error('Error loading health:', error);
+            }
+        }
+
+        // Load moments
+        async function loadMoments() {
+            try {
+                const res = await fetch(`${API_BASE}/api/moments`);
+                const data = await res.json();
+                
+                document.getElementById('momentCount').textContent = data.count;
+                
+                const container = document.getElementById('momentsList');
+                if (data.moments.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 py-8">No moments yet. Create your first one!</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.moments.map((moment, index) => `
+                    <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow fade-in" style="animation-delay: ${index * 0.05}s">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-semibold text-gray-800">${escapeHtml(moment.title)}</h3>
+                            <button onclick="deleteMoment(${moment.id})" 
+                                class="text-red-500 hover:text-red-700 text-sm font-medium">
+                                Delete
+                            </button>
+                        </div>
+                        <p class="text-gray-600 mb-3">${escapeHtml(moment.content)}</p>
+                        <div class="text-xs text-gray-400">
+                            ${new Date(moment.created_at).toLocaleString()}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading moments:', error);
+                document.getElementById('momentsList').innerHTML = 
+                    '<div class="text-center text-red-500 py-8">Error loading moments. Check console.</div>';
+            }
+        }
+
+        // Create moment
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/moments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+                
+                if (res.ok) {
+                    document.getElementById('createForm').reset();
+                    await loadMoments();
+                    showNotification('✓ Moment created successfully!', 'success');
+                } else {
+                    showNotification('✗ Failed to create moment', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating moment:', error);
+                showNotification('✗ Error creating moment', 'error');
+            }
+        });
+
+        // Delete moment
+        async function deleteMoment(id) {
+            if (!confirm('Are you sure you want to delete this moment?')) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/moments/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    await loadMoments();
+                    showNotification('✓ Moment deleted', 'success');
+                } else {
+                    showNotification('✗ Failed to delete moment', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting moment:', error);
+                showNotification('✗ Error deleting moment', 'error');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const div = document.createElement('div');
+            div.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } fade-in z-50`;
+            div.textContent = message;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadHealth();
+        loadMoments();
+        setInterval(loadHealth, 30000); // Refresh health every 30s
+    </script>
+</body>
+</html>
