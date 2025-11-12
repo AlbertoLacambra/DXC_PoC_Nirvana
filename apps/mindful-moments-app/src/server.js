@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const { Pool } = require('pg');
 const promClient = require('prom-client');
+const initDatabase = require('./init-db');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -43,12 +44,19 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
+// Test database connection and initialize if needed
+pool.query('SELECT NOW()', async (err, res) => {
   if (err) {
     console.error('❌ Database connection error:', err.message);
   } else {
     console.log('✅ Database connected successfully at:', res.rows[0].now);
+    
+    // Initialize database schema if needed
+    try {
+      await initDatabase();
+    } catch (error) {
+      console.error('Failed to initialize database:', error.message);
+    }
   }
 });
 
